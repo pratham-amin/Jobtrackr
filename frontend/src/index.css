@@ -10,20 +10,16 @@
   --bg: #f9fafb;
   --card-bg: #ffffff;
   --border: #e5e7eb;
-
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
 
-  --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-            0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
   --sans: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
   --heading: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
-
-  font-family: var(--sans);
-  color: var(--text);
-  background: var(--bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -32,168 +28,161 @@
 }
 
 /* ========================================
-   2. CSS Reset
+   2. Base Styles
+   Keep these inside @layer base so that
+   Tailwind utility classes can override them.
 ======================================== */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-html {
-  min-width: 320px;
-  min-height: 100%;
-  scroll-behavior: smooth;
-}
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    scroll-behavior: smooth;
+  }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  font-family: var(--sans);
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--text);
-  background: var(--bg);
-}
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+  }
 
-/* ========================================
-   3. React Root
-======================================== */
-#root {
-  min-height: 100vh;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
+  #root {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 
-/* ========================================
-   4. Typography
-======================================== */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin-top: 0;
-  font-family: var(--heading);
-  color: var(--text-h);
-  font-weight: 600;
-  line-height: 1.25;
-}
+  /* Default typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: 0;
+    font-family: var(--heading);
+    color: var(--text-h);
+    font-weight: 600;
+    line-height: 1.25;
+  }
 
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1.5rem;
-}
-
-h2 {
-  font-size: 1.875rem;
-  margin-bottom: 1rem;
-}
-
-h3 {
-  font-size: 1.25rem;
-  margin-bottom: 0.75rem;
-}
-
-p {
-  margin-top: 0;
-  margin-bottom: 1rem;
-}
-
-/* ========================================
-   5. Links and Buttons
-======================================== */
-a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-a:hover {
-  color: var(--accent-hover);
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* Visible keyboard focus */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* ========================================
-   6. Form Elements
-======================================== */
-input,
-textarea,
-select {
-  color: var(--text-h);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af;
-}
-
-/* ========================================
-   7. Code
-======================================== */
-code,
-pre {
-  font-family: var(--mono);
-}
-
-code {
-  font-size: 0.9em;
-  padding: 0.15rem 0.35rem;
-  border-radius: 4px;
-  background: #f3f4f6;
-  color: var(--text-h);
-}
-
-pre {
-  overflow-x: auto;
-}
-
-/* ========================================
-   8. Images and Media
-======================================== */
-img,
-svg,
-video {
-  display: block;
-  max-width: 100%;
-}
-
-/* ========================================
-   9. Responsive Typography
-======================================== */
-@media (max-width: 640px) {
   h1 {
-    font-size: 2rem;
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
   }
 
   h2 {
-    font-size: 1.5rem;
+    font-size: 1.875rem;
+    margin-bottom: 1rem;
   }
 
   h3 {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  /* Links */
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--accent-hover);
+  }
+
+  /* Form controls */
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  input,
+  textarea,
+  select {
+    color: var(--text-h);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  /* Keyboard accessibility */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Code */
+  code,
+  pre {
+    font-family: var(--mono);
+  }
+
+  code {
+    font-size: 0.9em;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: var(--text-h);
+  }
+
+  pre {
+    overflow-x: auto;
+  }
+
+  /* Images and media */
+  img,
+  svg,
+  video {
+    display: block;
+    max-width: 100%;
+  }
+}
+
+/* ========================================
+   3. Responsive Defaults
+======================================== */
+@layer base {
+  @media (max-width: 640px) {
+    h1 {
+      font-size: 2rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+    }
+
+    h3 {
+      font-size: 1.125rem;
+    }
   }
 }

@@ -1,13 +1,9 @@
-import { Link } from "react-router-dom";
-
 export default function Navbar() {
   return (
-    <nav className="bg-blue-600 text-white px-6 py-3 flex justify-between items-center">
-      <h1 className="font-bold text-lg">JobTrackr</h1>
-      <div className="space-x-4 space-between">
-        <Link to="/" className="hover:underline">Home</Link>
-        <Link to="/dashboard" className="hover:underline">Dashboard</Link>
-      </div>
+    <nav className="flex justify-left items-center bg-blue-600 px-6 py-1 ">
+      <h1>
+        <a href="/" className="!text-slate-900 text-3xl font-bold mt-3 mb-3">JobTrackr</a>
+      </h1>
     </nav>
   );
 }
