@@ -1,34 +1,134 @@
 
+import { useEffect, useState } from "react";
 import JobCard from "../components/JobCard";
+import AddApplication from "../components/AddApplication";
+
+const API_URL = "http://localhost:5000";
+
+type Job = {
+  id: number;
+  company: string;
+  role: string;
+  status: string;
+  application_date?: string | null;
+  job_url?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export default function Dashboard() {
-  const jobs = [
-    {
-      company: "Microsoft",
-      role: "Frontend Developer",
-      status: "Applied",
-    },
-    {
-      company: "Google",
-      role: "UI Engineer",
-      status: "Interview",
-    },
-    {
-      company: "Amazon",
-      role: "React Developer",
-      status: "Offer",
-    },
-  ];
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("newest");
+
+  async function fetchApplications() {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await fetch(`${API_URL}/applications`, {
+      credentials: "include",
+    });
+
+    if (response.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch applications.");
+    }
+
+    const data: Job[] = await response.json();
+    setJobs(data);
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    setError("Unable to load your applications. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function handleUpdate(
+  id: number,
+  updatedJob: {
+    company: string;
+    role: string;
+    status: string;
+    application_date: string | null;
+    job_url: string | null;
+    description: string | null;
+    notes: string | null;
+  }
+) {
+  try {
+    const response = await fetch(`${API_URL}/applications/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(updatedJob),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update application.");
+    }
+
+    await fetchApplications();
+  } catch (error) {
+    console.error("Update error:", error);
+    alert("Unable to update application. Please try again.");
+  }
+}
+
+async function handleDelete(id: number) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this application?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`${API_URL}/applications/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete application.");
+    }
+
+    await fetchApplications();
+  } catch (error) {
+    console.error(error);
+    alert("Unable to delete application.");
+  }
+}
+
+  useEffect(() => {
+    
+    fetchApplications();
+  }, []);
 
   const totalApplications = jobs.length;
+
   const interviews = jobs.filter(
-    (job) => job.status === "Interview"
+    (job) => job.status.toLowerCase() === "interview"
   ).length;
+
   const offers = jobs.filter(
-    (job) => job.status === "Offer"
+    (job) => job.status.toLowerCase() === "offer"
   ).length;
+
   const applied = jobs.filter(
-    (job) => job.status === "Applied"
+    (job) => job.status.toLowerCase() === "applied"
   ).length;
 
   const stats = [
@@ -58,9 +158,30 @@ export default function Dashboard() {
     },
   ];
 
+  const filteredJobs = jobs
+  .filter((job) => {
+    const matchesSearch =
+      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.role.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "All" || job.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  })
+  .sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+
+    return sortOrder === "newest"
+      ? dateB - dateA
+      : dateA - dateB;
+  });
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -74,68 +195,141 @@ export default function Dashboard() {
 
           <button
             type="button"
-            onClick={() => alert("Add application form coming next!")}
+            onClick={() => setShowAddForm(true)}
             className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700"
           >
             + Add Application
           </button>
         </div>
 
-        {/* Statistics */}
-        <section className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.title}
-              className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <p className="mb-3 text-sm font-medium text-slate-500">
-                {stat.title}
-              </p>
-              <p className={`text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </p>
-              <div
-                className={`mt-4 h-1.5 w-12 rounded-full ${stat.background}`}
-              />
-            </div>
-          ))}
-        </section>
+        
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Search */}
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search company or job role..."
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+          />
 
-        {/* Applications */}
-        <section>
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h3 className="mb-1 text-xl font-bold text-slate-900">
-                Recent Applications
-              </h3>
-              <p className="text-sm text-slate-500">
-                Keep track of your current opportunities.
-              </p>
-            </div>
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+          >
+            <option value="All">All Applications</option>
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
+          </select>
 
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
-              {totalApplications} jobs
-            </span>
+          {/* Sort */}
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+
+
+        {/* Loading */}
+        {loading && (
+          <p className="py-10 text-center text-slate-500">
+            Loading your applications...
+          </p>
+        )}
+
+        {/* Error */}
+        {!loading && error && (
+          <div className="rounded-lg bg-red-50 p-4 text-red-600">
+            {error}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {jobs.map((job, index) => (
-              <JobCard key={`${job.company}-${index}`} {...job} />
-            ))}
-          </div>
+        {!loading && !error && (
+          <>
+            {/* Statistics */}
+            <section className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {stats.map((stat) => (
+                <div
+                  key={stat.title}
+                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                >
+                  <p className="mb-3 text-sm font-medium text-slate-500">
+                    {stat.title}
+                  </p>
 
-          {jobs.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-              <h4 className="mb-2 text-lg font-semibold text-slate-800">
-                No applications yet
-              </h4>
-              <p className="text-slate-500">
-                Add your first job application to get started.
-              </p>
-            </div>
-          )}
-        </section>
+                  <p className={`text-3xl font-bold ${stat.color}`}>
+                    {stat.value}
+                  </p>
+
+                  <div
+                    className={`mt-4 h-1.5 w-12 rounded-full ${stat.background}`}
+                  />
+                </div>
+              ))}
+            </section>
+
+            {/* Applications */}
+            <section>
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h3 className="mb-1 text-xl font-bold text-slate-900">
+                    Recent Applications
+                  </h3>
+
+                  <p className="text-sm text-slate-500">
+                    Keep track of your current opportunities.
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
+                  {totalApplications} jobs
+                </span>
+              </div>
+
+              {filteredJobs.length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                 {filteredJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    {...job}
+                    application_date={job.application_date ?? null}
+                    job_url={job.job_url ?? null}
+                    description={job.description ?? null}
+                    notes={job.notes ?? null}
+                    onUpdate={handleUpdate}
+                    onDelete={handleDelete}
+                  />
+                ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                  <h4 className="mb-2 text-lg font-semibold text-slate-800">
+                    No applications yet
+                  </h4>
+
+                  <p className="text-slate-500">
+                    Add your first job application to get started.
+                  </p>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
+      {showAddForm && (
+          <AddApplication
+            onApplicationAdded={fetchApplications}
+            onClose={() => setShowAddForm(false)}
+          />
+        )}
     </main>
   );
 }
