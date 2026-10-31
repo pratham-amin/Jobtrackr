@@ -77,10 +77,10 @@ const [editNotes, setEditNotes] = useState(notes || "");
   
   return (
     
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900">
       {isEditing ? (
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-900">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
             Edit Application
           </h3>
 
@@ -88,20 +88,20 @@ const [editNotes, setEditNotes] = useState(notes || "");
             value={editCompany}
             onChange={(e) => setEditCompany(e.target.value)}
             placeholder="Company"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           />
 
           <input
             value={editRole}
             onChange={(e) => setEditRole(e.target.value)}
             placeholder="Job Role"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           />
 
           <select
             value={editStatus}
             onChange={(e) => setEditStatus(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           >
             <option value="Applied">Applied</option>
             <option value="Interview">Interview</option>
@@ -111,20 +111,20 @@ const [editNotes, setEditNotes] = useState(notes || "");
 
           {/* Application Date */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="text-slate-700 dark:text-slate-300 block mb-1 text-sm font-medium">
               Application Date
             </label>
             <input
               type="date"
               value={editApplicationDate}
               onChange={(e) => setEditApplicationDate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             />
           </div>
 
           {/* Job Posting URL */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="text-slate-700 dark:text-slate-300 block mb-1 text-sm font-medium">
               Job Posting URL
             </label>
             <input
@@ -132,47 +132,47 @@ const [editNotes, setEditNotes] = useState(notes || "");
               value={editJobUrl}
               onChange={(e) => setEditJobUrl(e.target.value)}
               placeholder="https://example.com/job"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
             />
           </div>
 
           {/* Job Description */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="text-slate-700 dark:text-slate-300 block mb-1 text-sm font-medium">
               Job Description
             </label>
             <textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="text-slate-700 dark:text-slate-300 block mb-1 text-sm font-medium">
               Notes
             </label>
             <textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
             />
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white transition"
             >
               Save
             </button>
 
             <button
               onClick={() => setIsEditing(false)}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:text-slate-300 hover:bg-slate-600 hover:text-white transition"
             >
               Cancel
             </button>
@@ -192,11 +192,11 @@ const [editNotes, setEditNotes] = useState(notes || "");
             </span>
           </div>
 
-          <h3 className="mb-1 text-lg font-bold text-slate-900">
+          <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white">
             {role}
           </h3>
 
-          <p className="mb-4 text-sm text-slate-500">
+          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             {company}
           </p>
 

@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import JobCard from "../components/JobCard";
 import AddApplication from "../components/AddApplication";
-
+import Analytics from "../components/analytics";
+import {exportApplications} from "../utils/exportApplications";
 const API_URL = "http://localhost:5000";
 
 type Job = {
@@ -46,7 +47,10 @@ export default function Dashboard() {
     }
 
     const data: Job[] = await response.json();
-    setJobs(data);
+
+
+
+setJobs(data);
   } catch (err) {
     console.error("Dashboard error:", err);
     setError("Unable to load your applications. Please try again.");
@@ -179,27 +183,37 @@ async function handleDelete(id: number) {
   });
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
 
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="mb-2 text-3xl font-bold text-slate-900">
+            <h2 className="mb-2 text-3xl font-bold text-slate-900 dark:text-white">
               My Dashboard
             </h2>
-            <p className="text-slate-500">
+            <p className="text-slate-500 dark:text-slate-400">
               Track your job applications and career progress.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            + Add Application
-          </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => exportApplications(jobs)}
+                className="rounded-lg border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100"
+              >
+                ↓ Export CSV
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                + Add Application
+              </button>
+            </div>
         </div>
 
         
@@ -210,14 +224,14 @@ async function handleDelete(id: number) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search company or job role..."
-            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           />
 
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           >
             <option value="All">All Applications</option>
             <option value="Applied">Applied</option>
@@ -230,7 +244,7 @@ async function handleDelete(id: number) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
@@ -254,14 +268,17 @@ async function handleDelete(id: number) {
 
         {!loading && !error && (
           <>
+          <Analytics applications={jobs} />
+
             {/* Statistics */}
             <section className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
                 <div
                   key={stat.title}
-                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
                 >
-                  <p className="mb-3 text-sm font-medium text-slate-500">
+                  <p className="mb-3 text-sm font-medium text-slate-500 dark:text-slate-400"
+>
                     {stat.title}
                   </p>
 
@@ -280,11 +297,11 @@ async function handleDelete(id: number) {
             <section>
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <h3 className="mb-1 text-xl font-bold text-slate-900">
+                  <h3 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
                     Recent Applications
                   </h3>
 
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Keep track of your current opportunities.
                   </p>
                 </div>
@@ -311,11 +328,11 @@ async function handleDelete(id: number) {
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-                  <h4 className="mb-2 text-lg font-semibold text-slate-800">
+                  <h4 className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900">
                     No applications yet
                   </h4>
 
-                  <p className="text-slate-500">
+                  <p className="text-slate-500 dark:text-slate-400">
                     Add your first job application to get started.
                   </p>
                 </div>
