@@ -112,12 +112,6 @@ const monthlyData = applications.reduce(
 monthlyData.sort((a, b) => a.key.localeCompare(b.key));
 
 
-monthlyData.sort((a, b) => {
-  const dateA = new Date(a.month);
-  const dateB = new Date(b.month);
-  return dateA.getTime() - dateB.getTime();
-});
-
 const stats = [
   { title: "Total Applications", value: totalApplications },
   { title: "Active Applications", value: activeCount },
@@ -164,14 +158,14 @@ const stats = [
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={chartData.filter((item) => item.value > 0)}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                label
-              >
+                    data={chartData.filter((item) => item.value > 0)}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={{ fill: "#94a3b8" }}
+                >
                 {chartData
                   .filter((item) => item.value > 0)
                   .map((entry) => (
@@ -181,7 +175,18 @@ const stats = [
                     />
                   ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #475569",
+                  borderRadius: "8px",
+                  color: "#ffffff",
+                }}
+                itemStyle={{ color: "#ffffff" }}
+              />
+              <Legend
+                wrapperStyle={{ color: "#cbd5e1" }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>

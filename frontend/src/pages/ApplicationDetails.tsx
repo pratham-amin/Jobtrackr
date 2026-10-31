@@ -70,27 +70,27 @@ function ApplicationDetails() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-3xl">
         <Link
           to="/dashboard"
-          className="mb-6 inline-block text-sm font-medium text-blue-600 hover:underline"
+          className="mb-6 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-white"
         >
           ← Back to Dashboard
         </Link>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-6">
-            <p className="text-sm font-medium text-slate-500">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
               Application Details
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+            <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
               {application.role}
             </h1>
-            <p className="mt-1 text-lg text-slate-600">
+            <p className="mt-1 text-lg text-slate-600 dark:text-slate-400">
               {application.company}
             </p>
-            <span className="mt-4 inline-block rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+            <span className="mt-4 inline-block rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 dark:text-slate-800 ">
               {application.status}
             </span>
           </div>
@@ -117,19 +117,19 @@ function Detail({ label, value }: { label: string; value: string | null }) {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-slate-500">{label}</h2>
+      <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</h2>
 
       {label === "Job Posting URL" && value ? (
         <a
           href={value}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1 break-all text-blue-600 hover:underline"
+          className="mt-1 whitespace-pre-wrap text-slate-800 dark:text-slate-200"
         >
           {value}
         </a>
       ) : (
-        <p className="mt-1 whitespace-pre-wrap text-slate-800">
+        <p className="mt-1 break-all text-blue-600 hover:underline dark:text-blue-400">
           {displayValue || "Not provided"}
         </p>
       )}

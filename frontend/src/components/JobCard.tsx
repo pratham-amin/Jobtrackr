@@ -165,7 +165,7 @@ const [editNotes, setEditNotes] = useState(notes || "");
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white transition"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 dark:border-slate-600 hover:bg-blue-600 hover:text-white transition bg-blue-300 dark:text-slate-900 "
             >
               Save
             </button>
@@ -181,7 +181,7 @@ const [editNotes, setEditNotes] = useState(notes || "");
       ) : (
         <>
           <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-lg font-bold text-blue-600">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-lg font-bold text-blue-600 dark:bg-blue-950 dark:text-blue-400">
               {company.trim().charAt(0).toUpperCase()}
             </div>
 
@@ -200,7 +200,7 @@ const [editNotes, setEditNotes] = useState(notes || "");
             {company}
           </p>
 
-          <div className="flex gap-3 border-t border-slate-100 pt-4">
+          <div className="flex gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
             <button
               type="button"
               onClick={() => setIsEditing(true)}
@@ -220,7 +220,7 @@ const [editNotes, setEditNotes] = useState(notes || "");
           <div className="mt-1 flex gap-3">
             <Link
           to={`/applications/${id}`}
-          className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-center text-sm mt-4 font-semibold text-slate-700 transition hover:border-slate-600 hover:bg-slate-700 hover:text-white"
+          className="flex-1 rounded-lg border border-slate-200 bg-slate-400 px-4 py-4 text-center text-sm mt-4 font-semibold text-slate-900 transition hover:border-slate-600 hover:bg-slate-700 hover:text-white"
           >
           View Details
            </Link>
