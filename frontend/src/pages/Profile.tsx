@@ -81,7 +81,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
         <p className="text-sm font-medium text-slate-500">
           Loading your profile...
         </p>
@@ -91,7 +91,7 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-5">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950 px-5">
         <p className="text-slate-600">
           {error || 'Unable to load your profile.'}
         </p>
@@ -122,7 +122,7 @@ export default function Profile() {
     : 'Not available';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-300 selection:bg-blue-600 selection:text-white">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
         <nav className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
           <Link to="/" className="flex items-center gap-2.5">
@@ -136,7 +136,7 @@ export default function Profile() {
 
           <Link
             to="/dashboard"
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 dark:text-white dark:hover:bg-slate-800 dark:hover:text-blue-500 dark:bg-slate-800"
           >
             Dashboard
           </Link>
@@ -145,13 +145,13 @@ export default function Profile() {
 
       <main className="mx-auto max-w-5xl px-5 py-10 sm:px-8 sm:py-14">
         <div className="mb-8">
-          <p className="mb-2 text-sm font-semibold text-blue-600">
+          <p className="mb-2 text-sm font-semibold text-blue-600 dark:text-white">
             ACCOUNT SETTINGS
           </p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
             My Profile
           </h1>
-          <p className="mt-2 text-slate-500">
+          <p className="mt-2 text-slate-500 dark:text-slate-400">
             View your account details and manage your session.
           </p>
         </div>
@@ -159,48 +159,50 @@ export default function Profile() {
         {error && (
           <div
             role="alert"
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
           >
             {error}
           </div>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="h-28 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500" />
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="h-28 bg-linear-to-r from-blue-600 via-blue-500 to-indigo-500 " />
 
           <div className="px-6 pb-7 sm:px-8">
             <div className="-mt-12 mb-5 flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-blue-100 text-3xl font-bold text-blue-700 shadow-sm">
               {initials || 'U'}
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
               {user.name}
             </h2>
-            <p className="mt-1 text-slate-500">{user.email}</p>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">
+              {user.email}
+            </p>
 
             <div className="mt-7 border-t border-slate-100 pt-6">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Personal information
               </h3>
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Full name</p>
-                  <p className="mt-1 break-words font-semibold text-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-slate-900">Full name</p>
+                  <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-900">
                     {user.name}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">Email address</p>
-                  <p className="mt-1 break-words font-semibold text-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-slate-900">Email address</p>
+                  <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-900">
                     {user.email}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-4 sm:col-span-2">
-                  <p className="text-sm text-slate-500">Member since</p>
-                  <p className="mt-1 font-semibold text-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-slate-900">Member since</p>
+                  <p className="mt-1 font-semibold text-slate-800 dark:text-slate-900">
                     {memberSince}
                   </p>
                 </div>
@@ -210,7 +212,7 @@ export default function Profile() {
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row">
               <Link
                 to="/dashboard"
-                className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 d"
               >
                 Go to dashboard
               </Link>
@@ -219,7 +221,7 @@ export default function Profile() {
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="inline-flex items-center justify-center rounded-xl border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-600 hover:bg-red-600 hover:text-white"
               >
                 {loggingOut ? 'Logging out...' : 'Log out'}
               </button>

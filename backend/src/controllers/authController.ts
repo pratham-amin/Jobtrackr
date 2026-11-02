@@ -23,46 +23,92 @@ export async function registerUser(
 ): Promise<void> {
   const { name, email, password } = req.body;
 
+  const namePattern = /^[A-Za-z]+([ '-][A-Za-z]+)*$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+const passwordPattern =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}$/;
+
+if (
+  typeof name !== 'string' ||
+  typeof email !== 'string' ||
+  typeof password !== 'string'
+) {
+  res.status(400).json({
+    error: 'Please provide valid registration details.',
+  });
+  return;
+}
+
+const trimmedName = name.trim();
+const normalizedEmail = email.trim().toLowerCase();
+
+if (
+  trimmedName.length < 2 ||
+  trimmedName.length > 60 ||
+  !namePattern.test(trimmedName)
+) {
+  res.status(400).json({
+    error: 'Name must contain 2–60 characters using letters, spaces, hyphens or apostrophes.',
+  });
+  return;
+}
+
+
+
+if (
+  normalizedEmail.length > 254 ||
+  !emailPattern.test(normalizedEmail)
+) {
+  res.status(400).json({
+    error: 'Please enter a valid email address.',
+  });
+  return;
+}
+
+if (!passwordPattern.test(password)) {
+  res.status(400).json({
+    error: 'Password must be 8–64 characters and include uppercase, lowercase, a number and a special character.',
+  });
+  return;
+}
+
+// PLACE THE DATABASE REGISTRATION LOGIC HERE
+try {
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const result = await pool.query(
+    `INSERT INTO users (name, email, password_hash)
+     VALUES ($1, $2, $3)
+     RETURNING id, name, email, created_at`,
+    [trimmedName, normalizedEmail, hashedPassword]
+  );
+
+  res.status(201).json({
+    message: 'Registration successful.',
+    user: result.rows[0],
+  });
+} catch (err: unknown) {
   if (
-    typeof name !== 'string' ||
-    typeof email !== 'string' ||
-    typeof password !== 'string' ||
-    !name.trim() ||
-    !email.trim() ||
-    password.length < 8
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    err.code === '23505'
   ) {
-    res.status(400).json({
-      error: 'Name, valid email, and password of at least 8 characters are required.',
+    res.status(409).json({
+      error: 'An account with this email already exists.',
     });
     return;
   }
 
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `INSERT INTO users (name, email, password_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, email, created_at`,
-      [name.trim(), email.trim().toLowerCase(), hashed]
-    );
-
-    res.status(201).json({ user: result.rows[0] });
-  } catch (err: unknown) {
-    if (
-      typeof err === 'object' &&
-      err !== null &&
-      'code' in err &&
-      err.code === '23505'
-    ) {
-      res.status(409).json({ error: 'Email is already registered.' });
-      return;
-    }
-
-    console.error('Registration failed:', err);
-    res.status(500).json({ error: 'Unable to register user.' });
-  }
+  console.error('Registration failed:', err);
+  res.status(500).json({
+    error: 'Unable to register user.',
+  });
 }
+}
+
+
+
 
 // Login user
 export async function loginUser(

@@ -20,10 +20,22 @@ export default function Register() {
     setError('');
     setSuccess('');
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    const namePattern = /^[A-Za-z]+([ '-][A-Za-z]+)*$/;
+
+    if (!namePattern.test(name.trim()) || name.trim().length < 2) {
+      setError('Please enter a valid full name.');
       return;
     }
+
+    const passwordPattern =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}$/;
+
+      if (!passwordPattern.test(password)) {
+        setError(
+          'Password must be 8–64 characters and include uppercase, lowercase, a number and a special character.'
+        );
+        return;
+      }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -65,46 +77,56 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
       <form
         onSubmit={handleRegister}
-        className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-lg"
+        className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-lg dark:bg-slate-800"
       >
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">JobTrackr</h1>
-          <p className="mt-2 text-gray-600">Create your account</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">JobTrackr</h1>
+          <p className="mt-2 text-gray-600 dark:text-slate-400">Create your account</p>
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-100 p-3 text-sm text-red-700">
+          <p className="rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:text-red-500">
             {error}
           </p>
         )}
 
         {success && (
-          <p className="rounded-lg bg-green-100 p-3 text-sm text-green-700">
+          <p className="rounded-lg bg-green-100 p-3 text-sm text-green-700 dark:text-green-500">
             {success}
           </p>
         )}
 
         <div>
-          <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Full name
           </label>
-          <input
+         <input
             id="name"
             type="text"
             autoComplete="name"
             required
+            minLength={2}
+            maxLength={60}
+            pattern="[A-Za-z]+([ '-][A-Za-z]+)*"
+            title="Enter a name using letters, spaces, hyphens or apostrophes."
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (/^[A-Za-z\s'-]*$/.test(value)) {
+                setName(value);
+              }
+            }}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
             placeholder="Enter your name"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Email address
           </label>
           <input
@@ -112,32 +134,38 @@ export default function Register() {
             type="email"
             autoComplete="email"
             required
+            maxLength={254}
+            pattern="^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$"
+            title="Please enter a valid email address, e.g. you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Password
           </label>
           <input
             id="password"
             type="password"
             autoComplete="new-password"
-            minLength={8}
             required
+            minLength={8}
+            maxLength={64}
+            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}"
+            title="Password must contain uppercase, lowercase, a number and a special character, with at least 8 characters."
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
             placeholder="At least 8 characters"
           />
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Confirm password
           </label>
           <input
@@ -145,9 +173,11 @@ export default function Register() {
             type="password"
             autoComplete="new-password"
             required
+            minLength={8}
+            maxLength={64}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
             placeholder="Re-enter your password"
           />
         </div>
@@ -160,7 +190,7 @@ export default function Register() {
           {loading ? 'Creating account...' : 'Create Account'}
         </button>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-blue-600 hover:underline">
             Sign in
