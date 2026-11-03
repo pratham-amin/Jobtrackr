@@ -4,6 +4,7 @@ import JobCard from "../components/JobCard";
 import AddApplication from "../components/AddApplication";
 import Analytics from "../components/analytics";
 import {exportApplications} from "../utils/exportApplications";
+import { Link } from "react-router-dom";
 const API_URL = "http://localhost:5000";
 
 type Job = {
@@ -213,6 +214,22 @@ async function handleDelete(id: number) {
               >
                 + Add Application
               </button>
+              <Link
+                to="/ai-assistant"
+                className="
+                  inline-flex items-center gap-2 rounded-lg
+                  bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600
+                  px-5 py-2.5 font-semibold text-white
+                  shadow-md shadow-indigo-500/20
+                  transition-all duration-300
+                  hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                  dark:from-violet-500 dark:via-indigo-500 dark:to-blue-500
+                "
+              >
+                <span>✦</span>
+                AI Assistant
+              </Link>
             </div>
         </div>
 

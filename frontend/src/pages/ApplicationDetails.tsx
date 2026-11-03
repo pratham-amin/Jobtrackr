@@ -72,12 +72,14 @@ function ApplicationDetails() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-3xl">
+        <div className="mb-10 flex items-center justify-between py-2">
         <Link
           to="/dashboard"
-          className="mb-6 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-white"
+          className="absolute right-6 top-6 m-20 mx-8 rounded-lg bg-slate-800 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
         >
           ← Back to Dashboard
         </Link>
+        </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-6">
@@ -98,8 +100,8 @@ function ApplicationDetails() {
           <div className="space-y-5 border-t border-slate-200 pt-6">
             <Detail label="Application Date" value={application.application_date} />
             <Detail label="Job Posting URL" value={application.job_url} />
-            <Detail label="Description" value={application.description} />
-            <Detail label="Notes" value={application.notes} />
+            <Detail label="Description" value={application.description} vertical />
+            <Detail label="Notes" value={application.notes} vertical />
             <Detail label="Created At" value={application.created_at} />
             <Detail label="Last Updated" value={application.updated_at} />
           </div>
@@ -109,27 +111,37 @@ function ApplicationDetails() {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({
+  label,
+  value,
+  vertical = false,
+}: {
+  label: string;
+  value: string | null;
+  vertical?: boolean;
+}) {
   const displayValue =
     label === "Application Date" && value
       ? value.split("T")[0].split("-").reverse().join("-")
       : value;
 
   return (
-    <div>
-      <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</h2>
+    <div className={vertical ? "space-y-2" : ""}>
+      <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+        {label}
+      </h2>
 
       {label === "Job Posting URL" && value ? (
         <a
           href={value}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1 whitespace-pre-wrap text-slate-800 dark:text-slate-200"
+          className="mt-1 block break-all text-blue-600 hover:underline dark:text-blue-400"
         >
           {value}
         </a>
       ) : (
-        <p className="mt-1 break-all text-blue-600 hover:underline dark:text-blue-400">
+        <p className="mt-1 whitespace-pre-wrap wrap-break-word text-slate-800 dark:text-slate-200">
           {displayValue || "Not provided"}
         </p>
       )}

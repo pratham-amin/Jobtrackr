@@ -10,6 +10,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import ApplicationDetails from "./pages/ApplicationDetails";
+import CoverLetter from "./pages/CoverLetter";
+import AIAssistant from "./pages/AIAssistant";
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/applications/:id" element={<ApplicationDetails />} />
+          <Route path="/cover-letter" element={<CoverLetter />} />
+          <Route path="/ai-assistant" element={<AIAssistant />} />
         </Route>
       </Routes>
     </Router>

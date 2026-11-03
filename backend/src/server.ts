@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.js';
 import applicationRoutes from './routes/applications.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const app: Application = express();
 
@@ -26,6 +27,7 @@ app.get('/test', (_req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/applications', applicationRoutes);
+app.use('/ai', aiRoutes);
 
 const PORT = process.env.PORT || 5000;
 
