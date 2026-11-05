@@ -26,32 +26,40 @@ export async function generateCoverLetter(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `
-    You are an expert professional cover letter writer.
+  
+const prompt = `
+  You are an expert professional cover letter writer.
 
-    Generate a personalised, well-structured cover letter
-    based on the candidate's information and job description.
+  Write a personalised, compelling cover letter tailored
+  specifically to the advertised position.
 
-    Requirements:
-    - Use the candidate's actual name.
-    - Highlight relevant skills and experience.
-    - Connect strengths to job requirements.
-    - Maintain the requested writing tone.
-    - Do not invent qualifications or achievements.
-    - Avoid generic and repetitive statements.
-    - Keep the letter between 250 and 400 words.
-    - Return only the cover letter.
+  CANDIDATE INFORMATION:
+  Name: ${data.name}
+  Skills: ${data.skills || "Not provided"}
+  Work Experience: ${data.experience || "Not provided"}
 
-    Candidate name: ${data.name}
-    Job title: ${data.jobTitle}
-    Company: ${data.company}
-    Skills: ${data.skills}
-    Experience: ${data.experience}
-    Writing tone: ${data.tone}
+  JOB INFORMATION:
+  Position: ${data.jobTitle}
+  Company: ${data.company}
 
-    Job description:
-    ${data.jobDescription}
-  `;
+  Job Description:
+  ${data.jobDescription}
+
+  WRITING INSTRUCTIONS:
+  - Address the requirements of the advertised position.
+  - Select the candidate's most relevant skills.
+  - Connect their actual experience to the job requirements.
+  - Explain how their skills could contribute to the company.
+  - Use a ${data.tone} writing tone.
+  - Do not invent qualifications, employment history,
+    achievements, or technical skills.
+  - Do not claim experience that the candidate has not provided.
+  - Avoid generic openings and repetitive statements.
+  - Use professional paragraphs and natural language.
+  - Keep the letter between 250 and 400 words.
+  - Return only the completed cover letter.
+`;
+
 
 let response;
 

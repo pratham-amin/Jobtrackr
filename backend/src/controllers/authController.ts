@@ -244,8 +244,19 @@ export async function getCurrentUser(
       return;
     }
 
-    const result = await pool.query(
-      'SELECT id, name, email, created_at FROM users WHERE id = $1',
+        const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        created_at,
+        phone,
+        skills,
+        experience,
+        linkedin_url,
+        portfolio_url
+      FROM users
+      WHERE id = $1`,
       [userId]
     );
 
@@ -258,5 +269,74 @@ export async function getCurrentUser(
   } catch (error) {
     console.error('Failed to retrieve current user:', error);
     res.status(500).json({ error: 'Unable to retrieve user.' });
+  }
+}
+
+export async function updateProfile(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+
+    const {
+      phone,
+      skills,
+      experience,
+      linkedin_url,
+      portfolio_url,
+    } = req.body;
+
+    if (
+      (phone !== undefined && typeof phone !== 'string') ||
+      (skills !== undefined && typeof skills !== 'string') ||
+      (experience !== undefined && typeof experience !== 'string') ||
+      (linkedin_url !== undefined && typeof linkedin_url !== 'string') ||
+      (portfolio_url !== undefined && typeof portfolio_url !== 'string')
+    ) {
+      res.status(400).json({ error: 'Invalid profile details.' });
+      return;
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET phone = $1,
+           skills = $2,
+           experience = $3,
+           linkedin_url = $4,
+           portfolio_url = $5
+       WHERE id = $6
+       RETURNING id, name, email, created_at,
+                 phone, skills, experience, linkedin_url, portfolio_url`,
+      [
+        phone?.trim() || null,
+        skills?.trim() || null,
+        experience?.trim() || null,
+        linkedin_url?.trim() || null,
+        portfolio_url?.trim() || null,
+        userId,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'User not found.' });
+      return;
+    }
+
+    res.json({
+      message: 'Professional profile updated successfully.',
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Profile update failed:', error);
+    res.status(500).json({ error: 'Unable to update profile.' });
   }
 }

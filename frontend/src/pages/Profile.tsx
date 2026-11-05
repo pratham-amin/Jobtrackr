@@ -9,6 +9,11 @@ type User = {
   name: string;
   email: string;
   created_at?: string;
+  phone?: string | null;
+  skills?: string | null;
+  experience?: string | null;
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
 };
 
 export default function Profile() {
@@ -18,6 +23,16 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [profileData, setProfileData] = useState({
+  phone: "",
+  skills: "",
+  experience: "",
+  linkedin_url: "",
+  portfolio_url: "",
+});
+
+const [savingProfile, setSavingProfile] = useState(false);
+const [profileMessage, setProfileMessage] = useState("");
 
   useEffect(() => {
     async function fetchProfile() {
@@ -38,6 +53,13 @@ export default function Profile() {
         }
 
         setUser(data.user);
+        setProfileData({
+          phone: data.user.phone || "",
+          skills: data.user.skills || "",
+          experience: data.user.experience || "",
+          linkedin_url: data.user.linkedin_url || "",
+          portfolio_url: data.user.portfolio_url || "",
+        });
       } catch (err) {
         setError(
           err instanceof Error
@@ -51,6 +73,40 @@ export default function Profile() {
 
     fetchProfile();
   }, [navigate]);
+
+  async function handleSaveProfile() {
+  setSavingProfile(true);
+  setError("");
+  setProfileMessage("");
+
+  try {
+    const response = await fetch(`${API_URL}/auth/profile`, {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(profileData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to update profile.");
+    }
+
+    setUser(data.user);
+    setProfileMessage("Professional profile updated successfully.");
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to connect to the server."
+    );
+  } finally {
+    setSavingProfile(false);
+  }
+}
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -180,33 +236,96 @@ export default function Profile() {
               {user.email}
             </p>
 
-            <div className="mt-7 border-t border-slate-100 pt-6">
+            <div className="mt-7 border-t border-slate-100 pt-6 ">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Personal information
               </h3>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500 dark:text-slate-900">Full name</p>
-                  <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-900">
+                <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800 dark:border-slate-700">
+                  <p className="text-sm text-slate-500 dark:text-white">Full name</p>
+                  <p className="mt-1 wrap-break-word font-semibold text-slate-800 dark:text-white">
                     {user.name}
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500 dark:text-slate-900">Email address</p>
-                  <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-900">
+                <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-white">Email address</p>
+                  <p className="mt-1 wrap-break-word font-semibold text-slate-800 dark:text-white">
                     {user.email}
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-4 sm:col-span-2">
-                  <p className="text-sm text-slate-500 dark:text-slate-900">Member since</p>
-                  <p className="mt-1 font-semibold text-slate-800 dark:text-slate-900">
+                <div className="rounded-xl bg-slate-50 p-4 sm:col-span-2 dark:bg-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-white">Member since</p>
+                  <p className="mt-1 font-semibold text-slate-800 dark:text-white">
                     {memberSince}
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-8 border-t border-slate-100 pt-6 dark:border-slate-600">
+              <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">
+                Professional Details
+              </h3>
+
+              <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+                Add your professional information to personalise your AI-generated cover letters.
+              </p>
+
+              {profileMessage && (
+                <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-400">
+                  {profileMessage}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveProfile();
+                }}
+                className="space-y-5"
+              >
+                {[
+                  { name: "phone", label: "Phone Number", placeholder: "Enter your phone number" },
+                  { name: "skills", label: "Professional Skills", placeholder: "React, TypeScript, Node.js..." },
+                  { name: "experience", label: "Work Experience", placeholder: "Describe your experience..." },
+                  { name: "linkedin_url", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/your-profile" },
+                  { name: "portfolio_url", label: "Portfolio URL", placeholder: "https://yourportfolio.com" },
+                ].map((field) => (
+                  <div key={field.name}>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      {field.label}
+                    </label>
+
+                    <input
+                      type={
+                        field.name === "linkedin_url" || field.name === "portfolio_url"
+                          ? "url"
+                          : "text"
+                      }
+                      value={profileData[field.name as keyof typeof profileData]}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          [field.name]: e.target.value,
+                        })
+                      }
+                      placeholder={field.placeholder}
+                      className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                ))}
+
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingProfile ? "Saving..." : "Save Professional Details"}
+                </button>
+              </form>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row">
