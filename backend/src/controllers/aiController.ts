@@ -102,9 +102,35 @@ export async function createCoverLetter(
       tone,
     });
 
-    res.status(200).json({
-      message: 'Cover letter generated successfully.',
+    const savedLetter = await pool.query(
+  `INSERT INTO cover_letters (
+    user_id,
+    job_title,
+    company,
+    job_description,
+    skills,
+    experience,
+    tone,
+    content
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, created_at`,
+      [
+        userId,
+        jobTitle.trim(),
+        company.trim(),
+        jobDescription.trim(),
+        skills.trim(),
+        experience.trim(),
+        tone,
+        coverLetter,
+      ]
+    );
+
+      res.status(200).json({
+      message: 'Cover letter generated and saved successfully.',
       coverLetter,
+      historyId: savedLetter.rows[0].id,
     });
   } catch (error: any) {
     console.error('Cover letter generation failed:', error);
@@ -113,6 +139,101 @@ export async function createCoverLetter(
       error: error.message || 'Unknown server error',
       errorType: error.name,
       status: error.status,
+    });
+  }
+}
+
+export async function getCoverLetterHistory(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT
+        id,
+        job_title,
+        company,
+        tone,
+        content,
+        created_at
+       FROM cover_letters
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.status(200).json({
+      history: result.rows,
+    });
+  } catch (error) {
+    console.error('Unable to fetch cover letter history:', error);
+
+    res.status(500).json({
+      error: 'Unable to load cover letter history.',
+    });
+  }
+}
+
+export async function deleteCoverLetterHistory(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === "object" && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    const letterId = Number(req.params.id);
+
+    if (!userId) {
+      res.status(401).json({
+        error: "Authentication required.",
+      });
+      return;
+    }
+
+    if (!Number.isInteger(letterId) || letterId <= 0) {
+      res.status(400).json({
+        error: "Invalid cover letter ID.",
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      `DELETE FROM cover_letters
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [letterId, userId]
+    );
+
+    if (result.rowCount === 0) {
+      res.status(404).json({
+        error: "Cover letter not found.",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Cover letter deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Unable to delete cover letter:", error);
+
+    res.status(500).json({
+      error: "Unable to delete cover letter.",
     });
   }
 }

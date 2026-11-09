@@ -10,6 +10,15 @@ interface CoverLetterResponse {
   error?: string;
 }
 
+interface CoverLetterHistoryItem {
+  id: number;
+  job_title: string;
+  company: string;
+  tone: string;
+  content: string;
+  created_at: string;
+}
+
 export default function CoverLetter() {
   const [formData, setFormData] = useState({
     jobTitle: "",
@@ -49,9 +58,38 @@ export default function CoverLetter() {
 
 
   const [coverLetter, setCoverLetter] = useState("");
+  const [selectedHistoryLetter, setSelectedHistoryLetter] = useState<CoverLetterHistoryItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<CoverLetterHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historySort, setHistorySort] = useState("newest");
+  const [historyTone, setHistoryTone] = useState("all");
+  const [activeHistoryDownloadId, setActiveHistoryDownloadId] =
+  useState<number | null>(null);
+  const historyDownloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      historyDownloadRef.current &&
+      !historyDownloadRef.current.contains(event.target as Node)
+    ) {
+      setActiveHistoryDownloadId(null);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
 
@@ -87,12 +125,82 @@ useEffect(() => {
     
   };
 
+    const handleOpenHistory = async () => {
+    setShowHistory(true);
+    setHistoryLoading(true);
+    setHistoryError("");
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/ai/cover-letter/history",
+        {
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to load history.");
+      }
+
+      setHistory(data.history || []);
+    } catch (err) {
+      setHistoryError(
+        err instanceof Error ? err.message : "Unable to load history."
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleDeleteHistory = async (id: number) => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this cover letter? This action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/ai/cover-letter/history/${id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to delete cover letter.");
+    }
+
+    setHistory((previousHistory) =>
+      previousHistory.filter((item) => item.id !== id)
+    );
+
+    if (selectedHistoryLetter?.id === id) {
+      setSelectedHistoryLetter(null);
+      setCoverLetter("");
+    }
+
+  } catch (err) {
+    alert(
+      err instanceof Error
+        ? err.message
+        : "Unable to delete cover letter."
+    );
+  }
+};
+
   const handleGenerate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setLoading(true);
     setError("");
     setCoverLetter("");
+    
 
     try {
       const response = await fetch(
@@ -116,6 +224,21 @@ useEffect(() => {
       }
 
       setCoverLetter(data.coverLetter);
+      setSelectedHistoryLetter(null);
+      if (showHistory) {
+        const historyResponse = await fetch(
+          "http://localhost:5000/ai/cover-letter/history",
+          {
+            credentials: "include",
+          }
+        );
+
+        const historyData = await historyResponse.json();
+
+        if (historyResponse.ok) {
+          setHistory(historyData.history || []);
+        }
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Something went wrong."
@@ -187,6 +310,40 @@ const handleDownloadPDF = () => {
   doc.save(`Cover_Letter_${companyName}.pdf`);
 };
 
+const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
+  const doc = new jsPDF();
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const maxWidth = pageWidth - margin * 2;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Cover Letter", margin, 25);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
+  const lines = doc.splitTextToSize(item.content, maxWidth);
+
+  let y = 40;
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  lines.forEach((line: string) => {
+    if (y > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.text(line, margin, y);
+    y += 7;
+  });
+
+  const companyName = item.company.replace(/\s+/g, "_");
+
+  doc.save(`Cover_Letter_${companyName}.pdf`);
+};
+
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500";
 
@@ -198,15 +355,279 @@ const handleDownloadPDF = () => {
       <div className="mx-auto max-w-5xl">
 
         {/* Back button */}
-        <div className="mb-6 flex justify-end">
-          <Link
-            to="/ai-assistant"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <span>←</span>
-            Back to AI Assistant
-          </Link>
-        </div>
+        <div className="mb-6 flex items-center justify-between">
+            <Link
+              to="/ai-assistant"
+              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Back to AI Assistant
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleOpenHistory}
+              className="rounded-lg border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Cover Letter History
+            </button>
+
+            
+          </div>
+          {showHistory && (
+            <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-slate-800 ">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900  dark:text-white">
+                    Cover Letter History
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Your previously generated cover letters.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                >
+                  Close
+                </button>
+              </div>
+
+              {historyLoading && (
+                <p className="text-sm text-gray-500">
+                  Loading your cover letters...
+                </p>
+              )}
+
+              {historyError && (
+                <p className="text-sm text-red-600">{historyError}</p>
+              )}
+
+              {!historyLoading && !historyError && history.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  No saved cover letters yet. Generate a cover letter to see it here.
+                </p>
+              )}
+
+              {!historyLoading && history.length > 0 && (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    placeholder="Search by job title or company..."
+                    className="mb-4 w-75 rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                  />
+                 <div className="relative mb-4 inline-block mx-2">
+                      <select
+                        value={historySort}
+                        onChange={(e) => setHistorySort(e.target.value)}
+                        className="min-w-48 cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-12 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 mx-2"
+                      >
+                        <option value="all">All filters</option>
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="company">Company A–Z</option>
+
+                      </select>
+
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+                        ▼
+                      </span>
+                    </div>
+
+                    <div className="relative mb-4 inline-block mx-0.5">
+                      <select
+                        value={historyTone}
+                        onChange={(e) => setHistoryTone(e.target.value)}
+                        className="min-w-48 cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-12 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      >
+                        <option value="all">All Tones</option>
+                        <option value="professional">Professional</option>
+                        <option value="confident">Confident</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                      </select>
+
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+                        ▼
+                      </span>
+                    </div>
+                    {history
+                    .filter((item) => {
+                      const search = historySearch.toLowerCase().trim();
+
+                      const matchesSearch =
+                        item.job_title.toLowerCase().includes(search) ||
+                        item.company.toLowerCase().includes(search);
+
+                      const matchesTone =
+                        historyTone === "all" || item.tone === historyTone;
+
+                      return matchesSearch && matchesTone;
+                    })
+                    .sort((a, b) => {
+                       if (historySort === "all") {
+                          return 0;
+                        }
+
+                      if (historySort === "oldest") {
+                        return (
+                          new Date(a.created_at).getTime() -
+                          new Date(b.created_at).getTime()
+                        );
+                      }
+
+                      if (historySort === "company") {
+                        return a.company.localeCompare(b.company);
+                      }
+
+                      return (
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                      );
+                    })
+                    .map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {item.job_title}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {item.company}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-400">
+                          {new Date(item.created_at).toLocaleDateString()} · {item.tone}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                      <button
+                        type="button"
+                          onClick={() => {
+                          setCoverLetter(item.content);
+                          setSelectedHistoryLetter(item);
+                          setShowHistory(false);
+
+                          setTimeout(() => {
+                            document
+                              .getElementById("cover-letter-preview")
+                              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }, 100);
+                        }}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        View
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(item.content);
+                            alert("Cover letter copied successfully!");
+                          } catch {
+                            alert("Unable to copy cover letter.");
+                          }
+                        }}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                      >
+                        Copy
+                      </button>
+
+                      <div
+                          className="relative"
+                          ref={
+                            activeHistoryDownloadId === item.id
+                              ? historyDownloadRef
+                              : null
+                          }
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                            setActiveHistoryDownloadId(
+                              activeHistoryDownloadId === item.id ? null : item.id
+                            )
+                            }
+                            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                          >
+                            ↓ Download
+                            <span>{showDownloadOptions ? "▲" : "▼"}</span>
+                          </button>
+
+                          {activeHistoryDownloadId === item.id && (
+                            <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const blob = new Blob([item.content], {
+                                    type: "text/plain;charset=utf-8",
+                                  });
+
+                                  const url = URL.createObjectURL(blob);
+                                  const link = document.createElement("a");
+
+                                  link.href = url;
+                                  link.download = `${item.job_title.replace(/[^a-z0-9]/gi, "_")}_Cover_Letter.txt`;
+
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  URL.revokeObjectURL(url);
+
+                                  setActiveHistoryDownloadId(null);
+                                }}
+                                className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                📄 Download as TXT
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleHistoryDownloadPDF(item);
+                                  setShowDownloadOptions(false);
+                                }}
+                                className="w-full border-t border-gray-200 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                📕 Download as PDF
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHistory(item.id)}
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-700 dark:bg-red-700 dark:text-red-100 dark:hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    </div>
+                    ))}
+
+                   {!history.some((item) => {
+                  const search = historySearch.toLowerCase().trim();
+
+                  return (
+                    item.job_title.toLowerCase().includes(search) ||
+                    item.company.toLowerCase().includes(search)
+                  );
+                  }) && (
+                  <p className="py-6 text-center text-sm text-gray-500">
+                    No cover letters found matching "{historySearch}".
+                  </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Hero section */}
         <section className="relative mb-8 overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-indigo-600 to-blue-600 p-8 text-white shadow-xl shadow-indigo-500/10 sm:p-10">
@@ -342,11 +763,15 @@ const handleDownloadPDF = () => {
 
         {/* Generated cover letter */}
         {coverLetter && (
-          <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section
+            id="cover-letter-preview"
+            className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-6 dark:border-slate-800">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Your Generated Cover Letter
+                  {selectedHistoryLetter
+                    ? `${selectedHistoryLetter.job_title} — ${selectedHistoryLetter.company}`
+                    : "Your Generated Cover Letter"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Review and customise it before sending.
