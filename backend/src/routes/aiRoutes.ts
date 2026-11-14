@@ -2,7 +2,8 @@ import { Router } from 'express';
 import {
   createCoverLetter,
   getCoverLetterHistory,
-  deleteCoverLetterHistory
+  deleteCoverLetterHistory,
+  updateCoverLetterHistory
 } from '../controllers/aiController.js';
 import { authMiddleware } from '../controllers/authController.js';
 
@@ -24,6 +25,12 @@ router.delete(
   '/cover-letter/history/:id',
   authMiddleware,
   deleteCoverLetterHistory
+);
+
+router.put(
+  '/cover-letter/history/:id',
+  authMiddleware,
+  updateCoverLetterHistory
 );
 
 export default router;

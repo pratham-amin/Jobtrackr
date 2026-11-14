@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
 
 
@@ -56,9 +56,18 @@ export default function CoverLetter() {
     loadProfile();
   }, []);
 
-
+  const navigate = useNavigate();
   const [coverLetter, setCoverLetter] = useState("");
   const [selectedHistoryLetter, setSelectedHistoryLetter] = useState<CoverLetterHistoryItem | null>(null);
+
+  const [isEditingHistoryLetter, setIsEditingHistoryLetter] = useState(false);
+  const [editedCoverLetter, setEditedCoverLetter] = useState("");
+  const hasUnsavedChanges =
+  isEditingHistoryLetter &&
+  editedCoverLetter !== coverLetter;
+
+  const [savingHistoryChanges, setSavingHistoryChanges] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -73,6 +82,26 @@ export default function CoverLetter() {
   const [activeHistoryDownloadId, setActiveHistoryDownloadId] =
   useState<number | null>(null);
   const historyDownloadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+  const hasUnsavedChanges =
+    isEditingHistoryLetter &&
+    editedCoverLetter !== coverLetter;
+
+  if (!hasUnsavedChanges) return;
+
+  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    event.preventDefault();
+    event.returnValue = "";
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, [isEditingHistoryLetter, editedCoverLetter, coverLetter]);
+  
 
   useEffect(() => {
   const handleClickOutside = (event: MouseEvent) => {
@@ -191,6 +220,55 @@ useEffect(() => {
         ? err.message
         : "Unable to delete cover letter."
     );
+  }
+};
+
+const handleSaveHistoryChanges = async () => {
+  if (!selectedHistoryLetter) return;
+
+  setSavingHistoryChanges(true);
+  setError("");
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/ai/cover-letter/history/${selectedHistoryLetter.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          content: editedCoverLetter,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to save changes.");
+    }
+
+    const updatedLetter = data.historyItem;
+
+    setCoverLetter(updatedLetter.content);
+    setSelectedHistoryLetter(updatedLetter);
+
+    setHistory((previousHistory) =>
+      previousHistory.map((item) =>
+        item.id === updatedLetter.id ? updatedLetter : item
+      )
+    );
+
+    setIsEditingHistoryLetter(false);
+    alert("Cover letter updated successfully!");
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Unable to save changes."
+    );
+  } finally {
+    setSavingHistoryChanges(false);
   }
 };
 
@@ -356,17 +434,31 @@ const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
 
         {/* Back button */}
         <div className="mb-6 flex items-center justify-between">
-            <Link
-              to="/ai-assistant"
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  isEditingHistoryLetter &&
+                  editedCoverLetter !== coverLetter
+                ) {
+                  const confirmLeave = window.confirm(
+                    "You have unsaved changes. Are you sure you want to leave without saving?"
+                  );
+
+                  if (!confirmLeave) return;
+                }
+
+                navigate("/ai-assistant");
+              }}
               className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Back to AI Assistant
-            </Link>
+            </button>
 
             <button
               type="button"
               onClick={handleOpenHistory}
-              className="rounded-lg border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Cover Letter History
             </button>
@@ -508,6 +600,19 @@ const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
                       <button
                         type="button"
                           onClick={() => {
+                            if (
+                            isEditingHistoryLetter &&
+                            editedCoverLetter !== coverLetter
+                          ) {
+                            const confirmSwitch = window.confirm(
+                              "You have unsaved changes. Are you sure you want to switch to another letter?"
+                            );
+
+                            if (!confirmSwitch) return;
+                          }
+                          setIsEditingHistoryLetter(false);
+                          setEditedCoverLetter(item.content);
+
                           setCoverLetter(item.content);
                           setSelectedHistoryLetter(item);
                           setShowHistory(false);
@@ -779,6 +884,52 @@ const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
               </div>
 
               <div className="flex flex-wrap gap-3">
+                {selectedHistoryLetter && !isEditingHistoryLetter && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedCoverLetter(coverLetter);
+                        setIsEditingHistoryLetter(true);
+                      }}
+                      className="rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600"
+                    >
+                      ✏️ Edit Letter
+                    </button>
+                  )}
+
+                  {selectedHistoryLetter && isEditingHistoryLetter && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveHistoryChanges}
+                        disabled={savingHistoryChanges || !hasUnsavedChanges}
+                        className="rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {savingHistoryChanges ? "Saving..." : "Save Changes"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditedCoverLetter(coverLetter);
+                          setIsEditingHistoryLetter(false);
+                        }}
+                        disabled={savingHistoryChanges}
+                        className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                      >
+                        Cancel
+                      </button>
+
+                      {hasUnsavedChanges && (
+                    <span className="rounded-full bg-amber-100 px-3 py-3 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                      Unsaved changes
+                    </span>
+                      )}
+                    </>
+                  )}
+
+                  
+
                 {/* Copy button */}
                 <button
                   type="button"
@@ -815,7 +966,11 @@ const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
                       <button
                         type="button"
                         onClick={() => {
-                          handleDownloadPDF();
+                          if (selectedHistoryLetter) {
+                            handleHistoryDownloadPDF(selectedHistoryLetter);
+                          } else {
+                            handleDownloadPDF();
+                          }
                           setShowDownloadOptions(false);
                         }}
                         className="flex w-full items-center gap-3 border-t border-slate-200 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
@@ -836,9 +991,19 @@ const handleHistoryDownloadPDF = (item: CoverLetterHistoryItem) => {
                   </p>
                 </div>
 
-                <p className="whitespace-pre-wrap wrap-break-words font-serif text-[15px] leading-8 text-slate-800">
-                  {coverLetter}
-                </p>
+                {isEditingHistoryLetter ? (
+                  <textarea
+                    value={editedCoverLetter}
+                    onChange={(e) => setEditedCoverLetter(e.target.value)}
+                    rows={22}
+                    className="w-full min-h-137.5 resize-y border-0 bg-white font-serif text-[15px] leading-8 text-slate-800 outline-none"
+                    placeholder="Edit your cover letter here..."
+                  />
+                ) : (
+                  <p className="whitespace-pre-wrap wrap-break-words font-serif text-[15px] leading-8 text-slate-800">
+                    {coverLetter}
+                  </p>
+                )}
               </div>
             </div>
           </section>

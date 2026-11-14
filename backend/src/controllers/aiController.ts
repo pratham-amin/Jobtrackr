@@ -237,3 +237,69 @@ export async function deleteCoverLetterHistory(
     });
   }
 }
+
+export async function updateCoverLetterHistory(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    const letterId = Number(req.params.id);
+    const { content } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    if (!Number.isInteger(letterId) || letterId <= 0) {
+      res.status(400).json({
+        error: 'Invalid cover letter ID.',
+      });
+      return;
+    }
+
+    if (
+      typeof content !== 'string' ||
+      !content.trim() ||
+      content.length > 20000
+    ) {
+      res.status(400).json({
+        error: 'Please provide valid cover letter content.',
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      `UPDATE cover_letters
+       SET content = $1
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, job_title, company, tone, content, created_at`,
+      [content.trim(), letterId, userId]
+    );
+
+    if (result.rowCount === 0) {
+      res.status(404).json({
+        error: 'Cover letter not found.',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Cover letter updated successfully.',
+      historyItem: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Unable to update cover letter:', error);
+
+    res.status(500).json({
+      error: 'Unable to update cover letter.',
+    });
+  }
+}
