@@ -18,8 +18,8 @@ const features = [
       'Analyse your resume, identify weaknesses and discover opportunities to improve it.',
     icon: '📄',
     category: 'RESUME',
-    path: '#',
-    available: false,
+    path: '/resume-analyzer',
+    available: true,
     accent: 'from-blue-500 to-cyan-500',
   },
   {

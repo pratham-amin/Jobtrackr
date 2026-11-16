@@ -4,6 +4,11 @@ import pool from '../config/db.js';
 import type { AuthRequest } from '../types/custom.js';
 import { generateCoverLetter } from '../services/openaiService.js';
 
+import { extractResumeText } from '../services/resumeParser.js';
+import { generateResumeAnalysis } from '../services/openaiService.js';
+import { generateResumeSuggestions } from '../services/openaiService.js';
+import { generateFinalResume } from '../services/openaiService.js';
+
 export async function createCoverLetter(
   req: AuthRequest,
   res: Response
@@ -300,6 +305,173 @@ export async function updateCoverLetterHistory(
 
     res.status(500).json({
       error: 'Unable to update cover letter.',
+    });
+  }
+}
+
+export async function analyzeResume(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        error: 'Please upload a resume.',
+      });
+      return;
+    }
+
+    const resumeText = await extractResumeText(req.file);
+
+    const analysis = await generateResumeAnalysis(resumeText);
+
+    res.status(200).json({
+      message: 'Resume analysed successfully.',
+      fileName: req.file.originalname,
+      analysis,
+    });
+  } catch (error) {
+    console.error('Resume analysis failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to analyse your resume. Please try again.',
+    });
+  }
+}
+
+
+export async function optimizeResume(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        error: 'Please upload a resume.',
+      });
+      return;
+    }
+
+    const resumeText = await extractResumeText(req.file);
+
+    const analysis = await generateResumeAnalysis(resumeText);
+
+    const optimization = await generateResumeSuggestions(
+      resumeText,
+      analysis
+    );
+
+    res.status(200).json({
+      message: 'Resume suggestions generated successfully.',
+      fileName: req.file.originalname,
+      suggestions: optimization.suggestions,
+    });
+  } catch (error) {
+    console.error('Resume optimization failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to generate resume suggestions. Please try again.',
+    });
+  }
+}
+
+
+export async function createFinalResume(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        error: 'Please upload your original resume.',
+      });
+      return;
+    }
+
+    let acceptedSuggestions;
+
+    try {
+      acceptedSuggestions = JSON.parse(
+        req.body.acceptedSuggestions || '[]'
+      );
+    } catch {
+      res.status(400).json({
+        error: 'Invalid accepted suggestions format.',
+      });
+      return;
+    }
+
+    if (
+      !Array.isArray(acceptedSuggestions) ||
+      acceptedSuggestions.length === 0 ||
+      !acceptedSuggestions.every(
+        (item) =>
+          item &&
+          typeof item.section === 'string' &&
+          typeof item.original === 'string' &&
+          typeof item.improved === 'string' &&
+          typeof item.reason === 'string'
+      )
+    ) {
+      res.status(400).json({
+        error: 'Please accept at least one valid suggestion.',
+      });
+      return;
+    }
+
+    const resumeText = await extractResumeText(req.file);
+
+    const finalResume = await generateFinalResume(
+      resumeText,
+      acceptedSuggestions
+    );
+
+    res.status(200).json({
+      message: 'Improved resume generated successfully.',
+      fileName: req.file.originalname,
+      finalResume,
+    });
+  } catch (error) {
+    console.error('Final resume generation failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to generate your improved resume.',
     });
   }
 }

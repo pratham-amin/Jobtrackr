@@ -12,6 +12,8 @@ import Profile from "./pages/Profile";
 import ApplicationDetails from "./pages/ApplicationDetails";
 import CoverLetter from "./pages/CoverLetter";
 import AIAssistant from "./pages/AIAssistant";
+import ResumeAnalyzer from "./pages/ResumeAnalyzer";
+import ResumeOptimizer from "./pages/ResumeOptimizer";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -47,6 +49,8 @@ function App() {
           <Route path="/applications/:id" element={<ApplicationDetails />} />
           <Route path="/cover-letter" element={<CoverLetter />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
+          <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
+          <Route path="/resume-optimizer" element={<ResumeOptimizer />} />
         </Route>
       </Routes>
     </Router>
