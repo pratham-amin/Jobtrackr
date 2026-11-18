@@ -6,7 +6,8 @@ import {
   updateCoverLetterHistory,
   analyzeResume,
   optimizeResume,
-  createFinalResume
+  createFinalResume,
+  matchResumeToJob
 } from '../controllers/aiController.js';
 import { authMiddleware } from '../controllers/authController.js';
 import { uploadResume } from '../middleware/uploadResume.js';
@@ -56,6 +57,13 @@ router.post(
   authMiddleware,
   uploadResume.single('resume'),
   createFinalResume
+);
+
+router.post(
+  '/resume/match-job',
+  authMiddleware,
+  uploadResume.single('resume'),
+  matchResumeToJob
 );
 
 

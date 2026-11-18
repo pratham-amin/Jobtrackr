@@ -8,6 +8,7 @@ import { extractResumeText } from '../services/resumeParser.js';
 import { generateResumeAnalysis } from '../services/openaiService.js';
 import { generateResumeSuggestions } from '../services/openaiService.js';
 import { generateFinalResume } from '../services/openaiService.js';
+import { generateJobMatch } from '../services/openaiService.js';
 
 export async function createCoverLetter(
   req: AuthRequest,
@@ -376,13 +377,33 @@ export async function optimizeResume(
       return;
     }
 
+    const { jobDescription } = req.body;
+
+    if (
+      typeof jobDescription !== 'string' ||
+      !jobDescription.trim()
+    ) {
+      res.status(400).json({
+        error: 'Please provide a job description.',
+      });
+      return;
+    }
+
     const resumeText = await extractResumeText(req.file);
+
+    const parsedMatchResult = await generateJobMatch(
+      resumeText,
+      jobDescription.trim()
+    );
 
     const analysis = await generateResumeAnalysis(resumeText);
 
     const optimization = await generateResumeSuggestions(
       resumeText,
-      analysis
+      analysis,
+      jobDescription,
+      parsedMatchResult
+      
     );
 
     res.status(200).json({
@@ -400,6 +421,7 @@ export async function optimizeResume(
 }
 
 
+
 export async function createFinalResume(
   req: AuthRequest,
   res: Response
@@ -411,9 +433,7 @@ export async function createFinalResume(
         : undefined;
 
     if (!userId) {
-      res.status(401).json({
-        error: 'Authentication required.',
-      });
+      res.status(401).json({ error: 'Authentication required.' });
       return;
     }
 
@@ -424,15 +444,29 @@ export async function createFinalResume(
       return;
     }
 
+    const jobDescription = req.body.jobDescription;
+
+    if (!jobDescription?.trim()) {
+      res.status(400).json({
+        error: 'Job description is required.',
+      });
+      return;
+    }
+
     let acceptedSuggestions;
+    let matchResult;
 
     try {
       acceptedSuggestions = JSON.parse(
         req.body.acceptedSuggestions || '[]'
       );
+
+      matchResult = JSON.parse(
+        req.body.matchResult || '{}'
+      );
     } catch {
       res.status(400).json({
-        error: 'Invalid accepted suggestions format.',
+        error: 'Invalid suggestions or matching feedback format.',
       });
       return;
     }
@@ -455,11 +489,32 @@ export async function createFinalResume(
       return;
     }
 
+    if (
+      typeof matchResult.matchScore !== 'number' ||
+      !Array.isArray(matchResult.matchingSkills) ||
+      !Array.isArray(matchResult.missingSkills) ||
+      !Array.isArray(matchResult.matchingExperience) ||
+      !Array.isArray(matchResult.recommendations) ||
+      typeof matchResult.summary !== 'string'
+    ) {
+      res.status(400).json({
+        error: 'Valid job matching feedback is required.',
+      });
+      return;
+    }
+
     const resumeText = await extractResumeText(req.file);
 
+    // Generate general resume analysis
+    const analysis = await generateResumeAnalysis(resumeText);
+
+    // Generate the final resume using all feedback
     const finalResume = await generateFinalResume(
       resumeText,
-      acceptedSuggestions
+      analysis,
+      acceptedSuggestions,
+      jobDescription,
+      matchResult
     );
 
     res.status(200).json({
@@ -472,6 +527,75 @@ export async function createFinalResume(
 
     res.status(500).json({
       error: 'Unable to generate your improved resume.',
+    });
+  }
+}
+
+
+
+
+export async function matchResumeToJob(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    const { jobDescription, resumeText } = req.body;
+
+    if (
+      typeof jobDescription !== 'string' ||
+      !jobDescription.trim()
+    ) {
+      res.status(400).json({
+        error: 'Please provide a job description.',
+      });
+      return;
+    }
+
+    let extractedResumeText: string;
+    let fileName: string | undefined;
+
+    if (typeof resumeText === 'string' && resumeText.trim()) {
+      // Match the generated resume text
+      extractedResumeText = resumeText.trim();
+      fileName = 'Generated Resume';
+    } else if (req.file) {
+      // Match the originally uploaded resume
+      extractedResumeText = await extractResumeText(req.file);
+      fileName = req.file.originalname;
+    } else {
+      res.status(400).json({
+        error: 'Please upload a resume or provide resume text.',
+      });
+      return;
+    }
+
+    const matchResult = await generateJobMatch(
+      extractedResumeText,
+      jobDescription.trim()
+    );
+
+    res.status(200).json({
+      message: 'Resume matched with job description successfully.',
+      fileName,
+      result: matchResult,
+    });
+  } catch (error) {
+    console.error('Resume job matching failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to match resume with job description. Please try again.',
     });
   }
 }

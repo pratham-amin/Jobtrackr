@@ -202,9 +202,12 @@ interface ResumeOptimization {
   suggestions: ResumeSuggestion[];
 }
 
+
 export async function generateResumeSuggestions(
   resumeText: string,
-  analysis: ResumeAnalysis
+  analysis: ResumeAnalysis,
+  jobDescription: string,
+  matchResult: JobMatchResult
 ): Promise<ResumeOptimization> {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -217,36 +220,55 @@ export async function generateResumeSuggestions(
   const prompt = `
 You are an expert professional resume writer and ATS optimisation specialist.
 
-Review the original resume and its AI analysis.
+Your task is to improve the candidate's resume specifically for the
+provided job description, using the resume matching feedback.
 
 ORIGINAL RESUME:
 ${resumeText}
 
-RESUME ANALYSIS:
+GENERAL RESUME ANALYSIS:
 ${JSON.stringify(analysis, null, 2)}
 
-Generate actionable improvements for the resume.
+TARGET JOB DESCRIPTION:
+${jobDescription}
+
+INITIAL JOB MATCHING FEEDBACK:
+${JSON.stringify(matchResult, null, 2)}
+
+Your objective is to improve the resume by addressing both the
+general weaknesses identified in the resume analysis and the
+job-specific gaps identified in the matching feedback.
 
 Requirements:
-1. Address the weaknesses identified in the analysis.
-2. Improve weak sentences and professional descriptions.
-3. Improve the professional summary where appropriate.
-4. Improve experience and project descriptions without inventing achievements.
-5. Suggest relevant skills only when supported by the original resume.
-6. Preserve the user's actual qualifications, experience, dates and facts.
-7. Never invent employers, certifications, metrics or achievements.
-8. Do not rewrite content that is already strong without a reason.
-9. Return between 3 and 10 useful suggestions.
 
-Return ONLY valid JSON using this structure:
+1. Prioritise the missing skills and keywords identified in the
+   matching feedback.
+2. Identify relevant experience already present in the resume that
+   can be better highlighted.
+3. Improve weak experience and project descriptions using language
+   relevant to the target role.
+4. Improve the professional summary to reflect the target role.
+5. Incorporate relevant job-description keywords only when supported
+   by the candidate's actual experience or qualifications.
+6. Address the AI recommendations from the initial matching feedback.
+7. Preserve all actual qualifications, employers, dates and facts.
+8. Never invent skills, certifications, achievements, metrics or
+   professional experience.
+9. If a required skill is genuinely missing, do not pretend the
+   candidate possesses it. Explain the gap in the reason.
+10. Do not rewrite content that is already relevant and effective.
+11. Provide between 3 and 10 useful suggestions.
+12. Each suggestion must be specific to this job description.
+
+Return ONLY valid JSON using exactly this structure:
 
 {
   "suggestions": [
     {
       "section": "Professional Summary",
       "original": "Original resume content",
-      "improved": "Improved resume content",
-      "reason": "Explanation of the improvement"
+      "improved": "Job-specific improved content",
+      "reason": "Explain how this improvement addresses the job requirements"
     }
   ]
 }
@@ -265,18 +287,18 @@ Return ONLY valid JSON using this structure:
   }
 
   const cleanedOutput = output
-  .replace(/^```(?:json)?\s*/i, "")
-  .replace(/\s*```$/, "")
-  .trim();
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
 
-let result: ResumeOptimization;
+  let result: ResumeOptimization;
 
-try {
-  result = JSON.parse(cleanedOutput) as ResumeOptimization;
-} catch {
-  console.error("Gemini returned invalid JSON:", output);
-  throw new Error("Gemini returned an invalid JSON response.");
-}
+  try {
+    result = JSON.parse(cleanedOutput) as ResumeOptimization;
+  } catch {
+    console.error("Gemini returned invalid JSON:", output);
+    throw new Error("Gemini returned an invalid JSON response.");
+  }
 
   if (
     !Array.isArray(result.suggestions) ||
@@ -298,10 +320,17 @@ try {
 
 export async function generateFinalResume(
   resumeText: string,
-  acceptedSuggestions: ResumeSuggestion[]
+  analysis: ResumeAnalysis,
+  acceptedSuggestions: ResumeSuggestion[],
+  jobDescription: string,
+  matchResult: JobMatchResult
 ): Promise<string> {
   if (!acceptedSuggestions.length) {
     throw new Error('Please accept at least one resume suggestion.');
+  }
+
+  if (!jobDescription.trim()) {
+    throw new Error('Job description is required.');
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -315,26 +344,38 @@ export async function generateFinalResume(
   const prompt = `
 You are an expert professional resume writer.
 
-Create a complete, polished, ATS-friendly resume using the
-original resume and only the improvements approved by the user.
+Create a complete, polished, ATS-friendly resume tailored to the
+target job description, using the original resume and only the
+improvements approved by the user.
 
 ORIGINAL RESUME:
 ${resumeText}
+
+GENERAL RESUME ANALYSIS:
+${JSON.stringify(analysis, null, 2)}
+
+TARGET JOB DESCRIPTION:
+${jobDescription}
+
+INITIAL JOB MATCHING FEEDBACK:
+${JSON.stringify(matchResult, null, 2)}
 
 USER-APPROVED IMPROVEMENTS:
 ${JSON.stringify(acceptedSuggestions, null, 2)}
 
 REQUIREMENTS:
 1. Apply only the improvements provided in the approved suggestions.
-2. Preserve all factual information from the original resume.
-3. Do not invent qualifications, skills, employers, dates, metrics,
+2. Tailor wording and relevant keywords to the target job description.
+3. Preserve all factual information from the original resume.
+4. Do not invent qualifications, skills, employers, dates, metrics,
    certifications or achievements.
-4. Preserve important original information that was not targeted
+5. Do not add skills merely because they appear in the job description.
+6. Preserve important original information that was not targeted
    by the suggestions.
-5. Use professional language and clear section headings.
-6. Keep the formatting simple and ATS-friendly.
-7. Return the complete resume as plain text.
-8. Do not include explanations, commentary or markdown code fences.
+7. Use professional language and clear section headings.
+8. Keep formatting simple and ATS-friendly.
+9. Return the complete resume as plain text.
+10. Do not include explanations, commentary or markdown code fences.
 `;
 
   const response = await ai.interactions.create({
@@ -352,4 +393,107 @@ REQUIREMENTS:
   return finalResume;
 }
 
+
+export interface JobMatchResult {
+  matchScore: number;
+  matchingSkills: string[];
+  missingSkills: string[];
+  matchingExperience: string[];
+  recommendations: string[];
+  summary: string;
+}
+
+export async function generateJobMatch(
+  resumeText: string,
+  jobDescription: string
+): Promise<JobMatchResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  if (!resumeText.trim() || !jobDescription.trim()) {
+    throw new Error('Resume and job description are required.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+You are an expert recruitment analyst and resume-to-job matching specialist.
+
+Compare the candidate's resume with the supplied job description.
+
+CANDIDATE RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+Evaluate:
+1. Skills that directly match the job requirements.
+2. Required skills that are missing from the resume.
+3. Relevant experience demonstrated in the resume.
+4. Practical recommendations to improve alignment.
+
+IMPORTANT:
+- Only identify skills supported by the supplied information.
+- Do not assume the candidate has skills or experience not mentioned.
+- Distinguish missing information from confirmed lack of ability.
+- Calculate an indicative match score between 0 and 100.
+- Do not guarantee interview selection or ATS success.
+- Give specific and constructive recommendations.
+- Return valid JSON only, without Markdown.
+
+Use exactly this structure:
+{
+  "matchScore": 75,
+  "matchingSkills": ["React", "TypeScript"],
+  "missingSkills": ["AWS", "Jest"],
+  "matchingExperience": ["Experience building React applications"],
+  "recommendations": ["Add relevant project details"],
+  "summary": "Short explanation of the match."
+}
+`;
+
+  const response = await ai.interactions.create({
+    model: 'gemini-3.5-flash-lite',
+    input: prompt,
+    store: false,
+  });
+
+  const output = response.output_text?.trim();
+
+  if (!output) {
+    throw new Error('Gemini did not generate a job match analysis.');
+  }
+
+  const cleanedOutput = output
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  let result: JobMatchResult;
+
+  try {
+    result = JSON.parse(cleanedOutput) as JobMatchResult;
+  } catch {
+    throw new Error('Gemini returned an invalid job match response.');
+  }
+
+  if (
+    typeof result.matchScore !== 'number' ||
+    result.matchScore < 0 ||
+    result.matchScore > 100 ||
+    !Array.isArray(result.matchingSkills) ||
+    !Array.isArray(result.missingSkills) ||
+    !Array.isArray(result.matchingExperience) ||
+    !Array.isArray(result.recommendations) ||
+    typeof result.summary !== 'string'
+  ) {
+    throw new Error('Gemini returned an invalid job match analysis.');
+  }
+
+  return result;
+}
 
