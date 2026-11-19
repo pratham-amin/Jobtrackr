@@ -58,19 +58,37 @@ function ResumeAnalyzer() {
   const [matching, setMatching] = useState(false);
   const [matchError, setMatchError] = useState("");
   const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null);
+  const [originalMatchResult, setOriginalMatchResult] =
+  useState<JobMatchResult | null>(null);
+  const [updatedMatchResult, setUpdatedMatchResult] =
+  useState<JobMatchResult | null>(null);
 
   const handleFileChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = event.target.files?.[0];
 
-    setAnalysis(null);
-    setError("");
+  setAnalysis(null);
+  setError("");
 
-    if (file) {
-      setResume(file);
-    }
-  };
+  setJobDescription("");
+  
+
+  // Reset previous job matching results
+  setMatchResult(null);
+  setOriginalMatchResult(null);
+  setUpdatedMatchResult(null);
+  setMatchError("");
+
+  // Reset previous optimisation results
+  setSuggestions([]);
+  setAcceptedSuggestions([]);
+  setFinalResume("");
+
+  if (file) {
+    setResume(file);
+  }
+};
 
   const handleAnalyze = async () => {
     if (!resume) {
@@ -114,6 +132,7 @@ function ResumeAnalyzer() {
   };
 
 
+
 const handleJobMatch = async () => {
   if (!resume) {
     setMatchError("Please upload your resume first.");
@@ -127,16 +146,13 @@ const handleJobMatch = async () => {
 
   setMatching(true);
   setMatchError("");
-  setMatchResult(null);
 
   try {
     const formData = new FormData();
 
     if (finalResume) {
-      // Match the newly generated resume
       formData.append("resumeText", finalResume);
     } else {
-      // Match the original uploaded resume
       formData.append("resume", resume);
     }
 
@@ -157,7 +173,18 @@ const handleJobMatch = async () => {
       throw new Error(data.error || "Job matching failed.");
     }
 
+    // Preserve the original resume's match result
+   // Store the original resume's match result
+    if (!finalResume) {
+      setOriginalMatchResult(data.result);
+    } else {
+      // Store the optimised resume's match result
+      setUpdatedMatchResult(data.result);
+    }
+
+    // Update the latest match result
     setMatchResult(data.result);
+
   } catch (err) {
     setMatchError(
       err instanceof Error
@@ -168,6 +195,7 @@ const handleJobMatch = async () => {
     setMatching(false);
   }
 };
+
 
 
   
@@ -648,7 +676,22 @@ const handleDownloadDOCX = async () => {
 
                 <textarea
                   value={jobDescription}
-                  onChange={(event) => setJobDescription(event.target.value)}
+                  onChange={(event) => {
+                    setJobDescription(event.target.value);
+
+                    // Reset job matching
+                    setMatchResult(null);
+                    setOriginalMatchResult(null);
+                    setUpdatedMatchResult(null);
+                    setMatchError("");
+
+                    // Reset optimisation
+                    setSuggestions([]);
+                    setAcceptedSuggestions([]);
+                    setFinalResume("");
+
+                    
+                  }}
                   placeholder="Paste the complete job description here..."
                   rows={8}
                   className="mt-5 w-full rounded-xl border border-gray-300 bg-white p-4 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -709,12 +752,14 @@ const handleDownloadDOCX = async () => {
                             width: `${Math.min(100, Math.max(0, matchResult.matchScore))}%`,
                           }}
                         />
-                      </div>
+                        </div>
+
 
                       <p className="mt-5 text-sm leading-6 text-gray-700 dark:text-gray-300">
                         {matchResult.summary}
                       </p>
-                    </div>
+                      </div>
+
 
                     {/* Skills */}
                     <div className="grid gap-5 md:grid-cols-2">
@@ -1060,15 +1105,81 @@ const handleDownloadDOCX = async () => {
                           disabled={matching || !jobDescription.trim()}
                           className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {matching
-                            ? "Rechecking Job Match..."
-                            : "Recheck Job Match"}
+                        {matching
+                        ? "Analysing Improved Resume..."
+                        : "Recheck Job Match"}
                         </button>
 
                         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                          Check how your newly generated resume matches the same job description.
+                          {matching
+                            ? "AI is analysing your improved resume against the job description. Please wait..."
+                            : "Check how your newly generated resume matches the same job description."}
                         </p>
                       </div>
+
+                          {!updatedMatchResult && (
+                          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+                            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                              Your improved resume is ready!
+                            </p>
+
+                            <p className="mt-1 text-sm text-blue-700 dark:text-blue-400">
+                              Recheck your job match to compare your original and optimised resume scores.
+                            </p>
+                          </div>
+                        )}
+                                             
+                        {/* Resume Match Score Comparison */}
+                        {originalMatchResult && updatedMatchResult && (
+                          <div className="mt-8 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-6 dark:border-indigo-800 dark:bg-indigo-950/20">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                              Resume Match Score Comparison
+                            </h3>
+
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                              See how your optimised resume performs against the original.
+                            </p>
+
+                            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                              <div className="rounded-xl bg-white p-5 dark:bg-gray-900">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Original Resume
+                                </p>
+                                <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                                  {originalMatchResult.matchScore}/100
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white p-5 dark:bg-gray-900">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Optimised Resume
+                                </p>
+                                <p className="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                                  {updatedMatchResult.matchScore}/100
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-200 pt-4 dark:border-indigo-800">
+                              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                                Overall Score Improvement
+                              </span>
+
+                              <span
+                                className={`text-xl font-bold ${
+                                  updatedMatchResult.matchScore >= originalMatchResult.matchScore
+                                    ? "text-green-600 dark:text-green-400"
+                                    : "text-red-600 dark:text-red-400"
+                                }`}
+                              >
+                                {updatedMatchResult.matchScore > originalMatchResult.matchScore
+                                  ? "+"
+                                  : ""}
+                                {updatedMatchResult.matchScore - originalMatchResult.matchScore} points
+                              </span>
+                            </div>
+                          </div>
+                        )}
 
                       {/* Template Selector */}
                       <div className="mt-8 ">

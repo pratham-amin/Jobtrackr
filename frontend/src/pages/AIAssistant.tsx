@@ -7,7 +7,7 @@ const features = [
     description:
       'Create personalised, professional cover letters tailored to your target role and company.',
     icon: '✍️',
-    category: 'APPLICATIONS',
+    category: 'COVER LETTERS',
     path: '/cover-letter',
     available: true,
     accent: 'from-violet-500 to-indigo-500',
@@ -23,14 +23,14 @@ const features = [
     accent: 'from-blue-500 to-cyan-500',
   },
   {
-    title: 'AI Job Match Score',
-    description:
-      'Compare your skills and experience against job requirements and get a match score.',
-    icon: '🎯',
-    category: 'JOB MATCHING',
-    path: '#',
-    available: false,
-    accent: 'from-emerald-500 to-teal-500',
+  title: 'AI Career Development Planner',
+  description:
+    'Build personalised career roadmaps, identify skill gaps and track your professional growth with AI-powered guidance.',
+  icon: '🚀',
+  category: 'CAREER DEVELOPMENT AND PLANNING',
+  path: '/career-development',
+  available: true,
+  accent: 'from-emerald-500 to-teal-500',
   },
   {
     title: 'AI Interview Preparation',

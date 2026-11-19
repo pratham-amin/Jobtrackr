@@ -11,6 +11,21 @@ interface CoverLetterInput {
   tone: 'professional' | 'confident' | 'enthusiastic';
 }
 
+export interface CareerRoadmap {
+  title: string;
+  overview: string;
+  estimatedDuration: string;
+  phases: {
+    phase: string;
+    duration: string;
+    objectives: string[];
+    skillsToLearn: string[];
+    activities: string[];
+    milestones: string[];
+  }[];
+  recommendations: string[];
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -497,3 +512,98 @@ Use exactly this structure:
   return result;
 }
 
+
+export async function generateCareerRoadmap(
+  currentRole: string,
+  targetRole: string,
+  experienceLevel: string,
+  currentSkills: string,
+  weeklyHours: number
+): Promise<CareerRoadmap> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+You are an expert career advisor and professional development planner.
+
+Create a personalised career development roadmap using the following details.
+
+CURRENT ROLE: ${currentRole}
+TARGET ROLE: ${targetRole}
+EXPERIENCE LEVEL: ${experienceLevel}
+CURRENT SKILLS: ${currentSkills}
+WEEKLY LEARNING AVAILABILITY: ${weeklyHours} hours
+
+Requirements:
+1. Identify the skills required for the target role.
+2. Identify learning gaps based on the current skills.
+3. Create a realistic, progressive learning roadmap.
+4. Divide the roadmap into clear phases.
+5. Include practical projects and activities.
+6. Define measurable milestones for each phase.
+7. Adapt the timeline to the available weekly learning hours.
+8. Avoid assuming the candidate has skills not listed.
+
+Return valid JSON only, without Markdown.
+
+Use exactly this structure:
+{
+  "title": "Full-Stack Developer Career Roadmap",
+  "overview": "A short personalised overview.",
+  "estimatedDuration": "6 months",
+  "phases": [
+    {
+      "phase": "Phase 1: Foundations",
+      "duration": "Month 1",
+      "objectives": ["Build programming fundamentals"],
+      "skillsToLearn": ["JavaScript"],
+      "activities": ["Complete practical exercises"],
+      "milestones": ["Build a small application"]
+    }
+  ],
+  "recommendations": ["Practise consistently"]
+}
+`;
+
+  const response = await ai.interactions.create({
+    model: 'gemini-3.5-flash-lite',
+    input: prompt,
+    store: false,
+  });
+
+  const output = response.output_text?.trim();
+
+  if (!output) {
+    throw new Error('Gemini did not generate a career roadmap.');
+  }
+
+  const cleanedOutput = output
+    .replace(/^```(?:json)?\\s*/i, '')
+    .replace(/\\s*```$/, '')
+    .trim();
+
+  let result: CareerRoadmap;
+
+  try {
+    result = JSON.parse(cleanedOutput) as CareerRoadmap;
+  } catch {
+    throw new Error('Gemini returned an invalid career roadmap.');
+  }
+
+  if (
+    typeof result.title !== 'string' ||
+    typeof result.overview !== 'string' ||
+    typeof result.estimatedDuration !== 'string' ||
+    !Array.isArray(result.phases) ||
+    !Array.isArray(result.recommendations)
+  ) {
+    throw new Error('Gemini returned an invalid career roadmap structure.');
+  }
+
+  return result;
+}
