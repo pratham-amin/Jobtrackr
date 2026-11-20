@@ -1,1 +1,1 @@
-JobTrackr-AI assistant 
+JobTrackr-AI assistant and builder 
