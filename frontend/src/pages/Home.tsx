@@ -365,9 +365,9 @@ export default function Home() {
                   <ArrowIcon />
                 </Link>
 
-                <a href="#features" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-300">
+                <Link to="/ai-assistant" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-300">
                   Explore features
-                </a>
+                </Link>
               </div>
 
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-sm text-slate-500 dark:text-slate-400">

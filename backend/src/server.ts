@@ -9,6 +9,8 @@ import authRoutes from './routes/auth.js';
 import applicationRoutes from './routes/applications.js';
 import aiRoutes from './routes/aiRoutes.js';
 import careerRoutes from './routes/careerRoutes.js';
+import interviewRoutes from './routes/interviewroutes.js';
+import mockInterviewRoutes from './routes/mockInterviewRoutes.js';
 
 const app: Application = express();
 
@@ -30,6 +32,8 @@ app.use('/auth', authRoutes);
 app.use('/applications', applicationRoutes);
 app.use('/ai', aiRoutes);
 app.use('/career', careerRoutes);
+app.use('/interview', interviewRoutes);
+app.use('/mock-interview', mockInterviewRoutes);
 
 const PORT = process.env.PORT || 5000;
 

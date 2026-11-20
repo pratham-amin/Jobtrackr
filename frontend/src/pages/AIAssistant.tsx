@@ -38,8 +38,8 @@ const features = [
       'Practise interview questions and prepare stronger answers for your next opportunity.',
     icon: '💬',
     category: 'INTERVIEWS',
-    path: '#',
-    available: false,
+    path: '/interview-preparation',
+    available: true,
     accent: 'from-orange-500 to-pink-500',
   },
 ];

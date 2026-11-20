@@ -26,6 +26,37 @@ export interface CareerRoadmap {
   recommendations: string[];
 }
 
+export interface InterviewQuestion {
+  question: string;
+  category: string;
+  difficulty: string;
+  suggestedAnswer: string;
+  explanation: string;
+}
+
+export interface InterviewPreparationResult {
+  jobRole: string;
+  interviewType: string;
+  questions: InterviewQuestion[];
+  preparationTips: string[];
+}
+
+export interface InterviewAnswerFeedback {
+  relevanceScore: number;
+  clarityScore: number;
+  accuracyScore: number;
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  feedback: string;
+}
+
+export interface MockInterviewResult {
+  question: string;
+  answer: string;
+  feedback: InterviewAnswerFeedback;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -603,6 +634,225 @@ Use exactly this structure:
     !Array.isArray(result.recommendations)
   ) {
     throw new Error('Gemini returned an invalid career roadmap structure.');
+  }
+
+  return result;
+}
+
+export async function generateInterviewQuestions(
+  jobRole: string,
+  jobDescription: string,
+  interviewType: string
+): Promise<InterviewPreparationResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  if (!jobRole.trim() || !jobDescription.trim()) {
+    throw new Error('Job role and job description are required.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+You are an experienced technical recruiter and interview coach.
+
+Generate personalised interview questions based on the following details.
+
+TARGET JOB ROLE:
+${jobRole}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+INTERVIEW TYPE:
+${interviewType}
+
+Requirements:
+1. Generate 10 relevant interview questions.
+2. Tailor questions to the target role and job description.
+3. Include a suitable difficulty level for each question.
+4. Provide a strong sample answer for every question.
+5. Explain what the interviewer is evaluating.
+6. For behavioural questions, use the STAR method in suggested answers.
+7. Avoid inventing requirements not supported by the job description.
+8. Make questions realistic and professionally relevant.
+9. Follow the selected interview type.
+
+Return valid JSON only, without Markdown.
+
+Use exactly this structure:
+{
+  "jobRole": "Full-Stack Developer",
+  "interviewType": "Mixed",
+  "questions": [
+    {
+      "question": "Explain the difference between JavaScript and TypeScript.",
+      "category": "Technical",
+      "difficulty": "Medium",
+      "suggestedAnswer": "A detailed sample answer.",
+      "explanation": "This evaluates the candidate's understanding of programming languages."
+    }
+  ],
+  "preparationTips": [
+    "Practise explaining your technical projects."
+  ]
+}
+`;
+
+  const response = await ai.interactions.create({
+    model: 'gemini-3.5-flash-lite',
+    input: prompt,
+    store: false,
+  });
+
+  const output = response.output_text?.trim();
+
+  if (!output) {
+    throw new Error('Gemini did not generate interview questions.');
+  }
+
+  const cleanedOutput = output
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  let result: InterviewPreparationResult;
+
+  try {
+    result = JSON.parse(cleanedOutput) as InterviewPreparationResult;
+  } catch {
+    throw new Error('Gemini returned an invalid interview preparation response.');
+  }
+
+  if (
+    typeof result.jobRole !== 'string' ||
+    typeof result.interviewType !== 'string' ||
+    !Array.isArray(result.questions) ||
+    !Array.isArray(result.preparationTips) ||
+    !result.questions.every(
+      (question) =>
+        typeof question.question === 'string' &&
+        typeof question.category === 'string' &&
+        typeof question.difficulty === 'string' &&
+        typeof question.suggestedAnswer === 'string' &&
+        typeof question.explanation === 'string'
+    )
+  ) {
+    throw new Error('Gemini returned an invalid interview preparation structure.');
+  }
+
+  return result;
+}
+
+export async function evaluateInterviewAnswer(
+  question: string,
+  answer: string,
+  jobRole: string
+): Promise<InterviewAnswerFeedback> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  if (!question.trim() || !answer.trim() || !jobRole.trim()) {
+    throw new Error('Question, answer and job role are required.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+You are an experienced technical interviewer and interview coach.
+
+Evaluate the candidate's interview answer.
+
+JOB ROLE:
+${jobRole}
+
+INTERVIEW QUESTION:
+${question}
+
+CANDIDATE ANSWER:
+${answer}
+
+Evaluate the answer using these criteria:
+
+1. Relevance: Does the answer address the question?
+2. Clarity: Is the answer structured and easy to understand?
+3. Accuracy: Is the information technically and factually correct?
+
+Requirements:
+- Give each criterion a score between 0 and 100.
+- Calculate an overall score between 0 and 100.
+- Identify specific strengths.
+- Identify areas requiring improvement.
+- Provide constructive and actionable feedback.
+- Do not reward unsupported claims.
+- Do not penalise candidates for using different but valid approaches.
+- Be fair and professional.
+
+Return valid JSON only, without Markdown.
+
+Use exactly this structure:
+{
+  "relevanceScore": 80,
+  "clarityScore": 85,
+  "accuracyScore": 75,
+  "overallScore": 80,
+  "strengths": ["Explains the main concept clearly"],
+  "improvements": ["Include a practical example"],
+  "feedback": "A constructive evaluation of the candidate's answer."
+}
+`;
+
+  const response = await ai.interactions.create({
+    model: 'gemini-3.5-flash-lite',
+    input: prompt,
+    store: false,
+  });
+
+  const output = response.output_text?.trim();
+
+  if (!output) {
+    throw new Error('Gemini did not generate interview feedback.');
+  }
+
+  const cleanedOutput = output
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  let result: InterviewAnswerFeedback;
+
+  try {
+    result = JSON.parse(cleanedOutput) as InterviewAnswerFeedback;
+  } catch {
+    throw new Error('Gemini returned invalid interview feedback.');
+  }
+
+  const scores = [
+    result.relevanceScore,
+    result.clarityScore,
+    result.accuracyScore,
+    result.overallScore,
+  ];
+
+  if (
+    !scores.every(
+      (score) =>
+        typeof score === 'number' &&
+        Number.isFinite(score) &&
+        score >= 0 &&
+        score <= 100
+    ) ||
+    !Array.isArray(result.strengths) ||
+    !Array.isArray(result.improvements) ||
+    typeof result.feedback !== 'string'
+  ) {
+    throw new Error('Gemini returned an invalid feedback structure.');
   }
 
   return result;

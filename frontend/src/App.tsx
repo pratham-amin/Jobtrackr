@@ -17,6 +17,7 @@ import ResumeOptimizer from "./pages/ResumeOptimizer";
 import CareerDevelopment from "./pages/CareerDevelopment";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import InterviewPreparation from "./pages/InterviewPreparation";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -53,6 +54,7 @@ function App() {
           <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
           <Route path="/resume-optimizer" element={<ResumeOptimizer />} />
           <Route path="/career-development" element={<CareerDevelopment />} />
+          <Route path="/interview-preparation" element={<InterviewPreparation />} />
         </Route>
       </Routes>
     </Router>
