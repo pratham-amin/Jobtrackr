@@ -279,9 +279,9 @@ export default function Home() {
           </a>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-500">
+            <Link to="/ai-assistant" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-500">
               Features
-            </a>
+            </Link>
             <a href="#how-it-works" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-500">
               How it works
             </a>
