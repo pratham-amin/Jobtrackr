@@ -13,6 +13,9 @@ type Job = {
   role: string;
   status: string;
   application_date?: string | null;
+  follow_up_date?: string | null;
+  follow_up_status?: string | null;
+  last_follow_up_at?: string | null;
   job_url?: string | null;
   description?: string | null;
   notes?: string | null;
@@ -28,6 +31,9 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState("newest");
+
+  const [dueFollowUps, setDueFollowUps] = useState<Job[]>([]);
+  const [followUpsLoading, setFollowUpsLoading] = useState(true);
 
   async function fetchApplications() {
   try {
@@ -60,6 +66,59 @@ setJobs(data);
   }
 }
 
+
+async function fetchDueFollowUps() {
+  try {
+    setFollowUpsLoading(true);
+
+    const response = await fetch(
+      `${API_URL}/applications/follow-ups/due`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch due follow-ups.");
+    }
+
+    const data: Job[] = await response.json();
+    setDueFollowUps(data);
+  } catch (err) {
+    console.error("Follow-up fetch error:", err);
+  } finally {
+    setFollowUpsLoading(false);
+  }
+}
+
+
+async function handleMarkFollowUpSent(id: number) {
+  try {
+    const response = await fetch(
+      `${API_URL}/applications/${id}/follow-up`,
+      {
+        method: "PATCH",
+        credentials: "include",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Failed to update follow-up."
+      );
+    }
+
+    await fetchDueFollowUps();
+    await fetchApplications();
+  } catch (err) {
+    console.error("Mark follow-up error:", err);
+    alert("Unable to mark follow-up as sent. Please try again.");
+  }
+}
+
+
 async function handleUpdate(
   id: number,
   updatedJob: {
@@ -71,7 +130,7 @@ async function handleUpdate(
     description: string | null;
     notes: string | null;
   }
-) {
+): Promise<boolean> {
   try {
     const response = await fetch(`${API_URL}/applications/${id}`, {
       method: "PUT",
@@ -83,13 +142,17 @@ async function handleUpdate(
     });
 
     if (!response.ok) {
-      throw new Error("Failed to update application.");
-    }
+  const errorData = await response.json();
+  throw new Error(errorData.error || "Failed to update application.");
+}
 
     await fetchApplications();
+    await fetchDueFollowUps();
+    return true;
   } catch (error) {
     console.error("Update error:", error);
-    alert("Unable to update application. Please try again.");
+    alert(error instanceof Error ? error.message : "Unable to update application.");
+    return false;
   }
 }
 
@@ -118,9 +181,9 @@ async function handleDelete(id: number) {
 }
 
   useEffect(() => {
-    
-    fetchApplications();
-  }, []);
+  fetchApplications();
+  fetchDueFollowUps();
+}, []);
 
   const totalApplications = jobs.length;
 
@@ -287,6 +350,8 @@ async function handleDelete(id: number) {
           <>
           <Analytics applications={jobs} />
 
+
+
             {/* Statistics */}
             <section className="mb-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
@@ -364,6 +429,70 @@ async function handleDelete(id: number) {
             onClose={() => setShowAddForm(false)}
           />
         )}
+
+      
+            {/* Follow-up Reminders */}
+            <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                    Follow-up Reminders
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Keep track of applications that need your attention.
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700">
+                  {dueFollowUps.length} Due
+                </span>
+              </div>
+
+              {followUpsLoading ? (
+                <p className="py-6 text-center text-slate-500">
+                  Loading follow-ups...
+                </p>
+              ) : dueFollowUps.length === 0 ? (
+                <div className="rounded-lg bg-slate-50 px-4 py-8 text-center dark:bg-slate-800">
+                  <p className="font-medium text-slate-700 dark:text-slate-200">
+                    You're all caught up!
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    No follow-ups are due right now.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {dueFollowUps.map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex flex-col gap-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <h4 className="font-semibold text-slate-900 dark:text-white">
+                          {job.company}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          {job.role}
+                        </p>
+                        <p className="mt-1 text-sm text-amber-600 dark:text-amber-400 ">
+                          Follow-up date: {job.follow_up_date}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleMarkFollowUpSent(job.id)}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        Mark as Sent
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
     </main>
   );
 }

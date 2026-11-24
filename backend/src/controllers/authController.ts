@@ -6,6 +6,9 @@ import jwt from 'jsonwebtoken';
 import type { JwtPayload } from 'jsonwebtoken';
 import type { AuthRequest } from '../types/custom.js';
 
+import { randomInt } from 'node:crypto';
+import { sendVerificationEmail } from '../services/emailService.js';
+
 const COOKIE_NAME = 'jobtrackr_token';
 
 const cookieOptions = {
@@ -76,17 +79,46 @@ if (!passwordPattern.test(password)) {
 try {
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // Create the user as unverified
   const result = await pool.query(
-    `INSERT INTO users (name, email, password_hash)
-     VALUES ($1, $2, $3)
-     RETURNING id, name, email, created_at`,
+    `INSERT INTO users
+      (name, email, password_hash, email_verified)
+     VALUES ($1, $2, $3, FALSE)
+     RETURNING id, name, email`,
     [trimmedName, normalizedEmail, hashedPassword]
   );
 
+  const user = result.rows[0];
+
+  // Generate a secure six-digit OTP
+  const otp = randomInt(100000, 1000000).toString();
+
+  // Hash the OTP before storing it
+  const otpHash = await bcrypt.hash(otp, 10);
+
+  // Store OTP with five-minute expiry
+  await pool.query(
+    `INSERT INTO email_verifications
+      (user_id, otp_hash, expires_at, attempts)
+     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', 0)
+     ON CONFLICT (user_id)
+     DO UPDATE SET
+       otp_hash = EXCLUDED.otp_hash,
+       expires_at = EXCLUDED.expires_at,
+       attempts = 0,
+       created_at = NOW()`,
+    [user.id, otpHash]
+  );
+
+  // Send verification email
+  await sendVerificationEmail(normalizedEmail, otp);
+
   res.status(201).json({
-    message: 'Registration successful.',
-    user: result.rows[0],
+    message: 'Verification code sent to your email.',
+    requiresVerification: true,
+    email: normalizedEmail,
   });
+
 } catch (err: unknown) {
   if (
     typeof err === 'object' &&
@@ -101,45 +133,287 @@ try {
   }
 
   console.error('Registration failed:', err);
+
   res.status(500).json({
-    error: 'Unable to register user.',
+    error: 'Unable to complete registration or send verification email.',
   });
 }
 }
 
 
 
+export async function verifyOtp(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const { email, otp } = req.body;
+
+  if (
+    typeof email !== 'string' ||
+    typeof otp !== 'string' ||
+    !email.trim() ||
+    !/^\d{6}$/.test(otp)
+  ) {
+    res.status(400).json({
+      error: 'Please provide a valid email and six-digit OTP.',
+    });
+    return;
+  }
+
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    res.status(500).json({ error: 'Server configuration error.' });
+    return;
+  }
+
+  let client;
+
+  try {
+    client = await pool.connect();
+
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      `SELECT
+         u.id,
+         u.name,
+         u.email,
+         ev.otp_hash,
+         ev.expires_at,
+         ev.attempts
+       FROM users u
+       JOIN email_verifications ev ON u.id = ev.user_id
+       WHERE u.email = $1
+         AND u.email_verified = FALSE
+       FOR UPDATE OF u, ev`,
+      [email.trim().toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+
+      res.status(400).json({
+        error: 'No pending email verification found.',
+      });
+      return;
+    }
+
+    const verification = result.rows[0];
+
+    if (verification.attempts >= 5) {
+      await client.query('ROLLBACK');
+
+      res.status(429).json({
+        error: 'Too many incorrect attempts. Please request a new OTP.',
+      });
+      return;
+    }
+
+    if (new Date(verification.expires_at) < new Date()) {
+      await client.query('ROLLBACK');
+
+      res.status(400).json({
+        error: 'OTP has expired. Please request a new one.',
+      });
+      return;
+    }
+
+    const isValid = await bcrypt.compare(
+      otp,
+      verification.otp_hash
+    );
+
+    if (!isValid) {
+      await client.query(
+        `UPDATE email_verifications
+         SET attempts = attempts + 1
+         WHERE user_id = $1`,
+        [verification.id]
+      );
+
+      await client.query('COMMIT');
+
+      res.status(400).json({
+        error: 'Incorrect OTP. Please try again.',
+      });
+      return;
+    }
+
+    await client.query(
+      `UPDATE users
+       SET email_verified = TRUE
+       WHERE id = $1`,
+      [verification.id]
+    );
+
+    await client.query(
+      `DELETE FROM email_verifications
+       WHERE user_id = $1`,
+      [verification.id]
+    );
+
+    await client.query('COMMIT');
+
+    const token = jwt.sign(
+      { id: verification.id },
+      secret,
+      { expiresIn: '1h' }
+    );
+
+    res.cookie(COOKIE_NAME, token, cookieOptions);
+
+    res.json({
+      message: 'Email verified successfully.',
+      user: {
+        id: verification.id,
+        name: verification.name,
+        email: verification.email,
+      },
+    });
+
+  } catch (error) {
+    if (client) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
+
+    console.error('OTP verification failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to verify email.',
+    });
+
+  } finally {
+    client?.release();
+  }
+}
+
+
+
+
+export async function resendOtp(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const { email } = req.body;
+
+  if (typeof email !== 'string' || !email.trim()) {
+    res.status(400).json({ error: 'Email is required.' });
+    return;
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const result = await pool.query(
+      `SELECT u.id, ev.created_at
+       FROM users u
+       JOIN email_verifications ev ON u.id = ev.user_id
+       WHERE u.email = $1
+         AND u.email_verified = FALSE`,
+      [normalizedEmail]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(400).json({
+        error: 'No pending email verification found.',
+      });
+      return;
+    }
+
+    const verification = result.rows[0];
+
+    const secondsSinceLastOtp =
+      (Date.now() - new Date(verification.created_at).getTime()) / 1000;
+
+    if (secondsSinceLastOtp < 60) {
+      res.status(429).json({
+        error: 'Please wait 60 seconds before requesting another OTP.',
+      });
+      return;
+    }
+
+    const otp = randomInt(100000, 1000000).toString();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    await pool.query(
+      `UPDATE email_verifications
+       SET otp_hash = $1,
+           expires_at = NOW() + INTERVAL '5 minutes',
+           attempts = 0,
+           created_at = NOW()
+       WHERE user_id = $2`,
+      [otpHash, verification.id]
+    );
+
+    await sendVerificationEmail(normalizedEmail, otp);
+
+    res.json({
+      message: 'A new verification code has been sent.',
+    });
+
+  } catch (error) {
+    console.error('Resending OTP failed:', error);
+    res.status(500).json({
+      error: 'Unable to resend verification code.',
+    });
+  }
+}
+
+
 
 // Login user
+
 export async function loginUser(
   req: Request,
   res: Response
 ): Promise<void> {
   const { email, password } = req.body;
 
-  if (typeof email !== 'string' || typeof password !== 'string') {
-    res.status(400).json({ error: 'Email and password are required.' });
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string'
+  ) {
+    res.status(400).json({
+      error: 'Email and password are required.',
+    });
     return;
   }
 
   try {
     const result = await pool.query(
-      `SELECT id, name, email, password_hash
+      `SELECT id, name, email, password_hash, email_verified
        FROM users
        WHERE email = $1`,
       [email.trim().toLowerCase()]
     );
 
     if (result.rows.length === 0) {
-      res.status(401).json({ error: 'Invalid email or password.' });
+      res.status(401).json({
+        error: 'Invalid email or password.',
+      });
       return;
     }
 
     const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password_hash);
+
+    const match = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
 
     if (!match) {
-      res.status(401).json({ error: 'Invalid email or password.' });
+      res.status(401).json({
+        error: 'Invalid email or password.',
+      });
+      return;
+    }
+
+    if (!user.email_verified) {
+      res.status(403).json({
+        error: 'Please verify your email before logging in.',
+        requiresVerification: true,
+      });
       return;
     }
 
@@ -147,7 +421,10 @@ export async function loginUser(
 
     if (!secret) {
       console.error('JWT_SECRET is not configured.');
-      res.status(500).json({ error: 'Server configuration error.' });
+
+      res.status(500).json({
+        error: 'Server configuration error.',
+      });
       return;
     }
 
@@ -167,11 +444,17 @@ export async function loginUser(
         email: user.email,
       },
     });
+
   } catch (err: unknown) {
     console.error('Login failed:', err);
-    res.status(500).json({ error: 'Unable to log in.' });
+
+    res.status(500).json({
+      error: 'Unable to log in.',
+    });
   }
 }
+
+
 
 // Log out user
 export function logoutUser(

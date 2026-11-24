@@ -18,7 +18,7 @@ interface JobProps {
       job_url: string | null;
       description: string | null;
       notes: string | null; }
-  ) => void;  
+  ) => Promise<boolean>;  
   onDelete: (id: number) => void;
 }
 
@@ -55,24 +55,28 @@ const [editNotes, setEditNotes] = useState(notes || "");
   const badgeStyle =
     statusStyles[status] ?? "bg-slate-100 text-slate-700";
 
-  function handleSave() {
-    if (!editCompany.trim() || !editRole.trim()) {
-      alert("Company and role are required.");
-      return;
-    }
 
-    onUpdate(id, {
-      company: editCompany.trim(),
-      role: editRole.trim(),
-      status: editStatus,
-      application_date: editApplicationDate,
-      job_url: editJobUrl,
-      description: editDescription,
-      notes: editNotes,
-    });
+    
+  async function handleSave() {
+  if (!editCompany.trim() || !editRole.trim()) {
+    alert("Company and role are required.");
+    return;
+  }
 
+  const success = await onUpdate(id, {
+    company: editCompany.trim(),
+    role: editRole.trim(),
+    status: editStatus,
+    application_date: editApplicationDate,
+    job_url: editJobUrl,
+    description: editDescription,
+    notes: editNotes,
+  });
+
+  if (success) {
     setIsEditing(false);
   }
+}
 
   
   return (

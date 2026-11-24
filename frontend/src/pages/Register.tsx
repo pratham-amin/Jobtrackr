@@ -11,6 +11,9 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
+
+  const [otpMode, setOtpMode] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,12 +33,12 @@ export default function Register() {
     const passwordPattern =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}$/;
 
-      if (!passwordPattern.test(password)) {
-        setError(
-          'Password must be 8–64 characters and include uppercase, lowercase, a number and a special character.'
-        );
-        return;
-      }
+    if (!passwordPattern.test(password)) {
+      setError(
+        'Password must be 8–64 characters and include uppercase, lowercase, a number and a special character.'
+      );
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -63,8 +66,8 @@ export default function Register() {
         throw new Error(data.error || 'Registration failed.');
       }
 
-      setSuccess('Account created successfully! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 1200);
+      setOtpMode(true);
+      setSuccess('A verification code has been sent to your email.');
     } catch (err) {
       setError(
         err instanceof Error
@@ -76,15 +79,99 @@ export default function Register() {
     }
   }
 
+  async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Please enter a valid six-digit OTP.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        credentials:'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'OTP verification failed.');
+      }
+
+      setSuccess('Email verified successfully! Redirecting to login...');
+
+      setTimeout(() => navigate('/dashboard'), 1200);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to verify OTP.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to resend OTP.');
+      }
+
+      setOtp('');
+      setSuccess('A new verification code has been sent to your email.');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to resend OTP.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
       <form
-        onSubmit={handleRegister}
+        onSubmit={otpMode ? handleVerifyOtp : handleRegister}
         className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-lg dark:bg-slate-800"
       >
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">JobTrackr</h1>
-          <p className="mt-2 text-gray-600 dark:text-slate-400">Create your account</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            JobTrackr
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-slate-400">
+            {otpMode ? 'Verify your email address' : 'Create your account'}
+          </p>
         </div>
 
         {error && (
@@ -99,103 +186,150 @@ export default function Register() {
           </p>
         )}
 
-        <div>
-          <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Full name
-          </label>
-         <input
-            id="name"
-            type="text"
-            autoComplete="name"
-            required
-            minLength={2}
-            maxLength={60}
-            pattern="[A-Za-z]+([ '-][A-Za-z]+)*"
-            title="Enter a name using letters, spaces, hyphens or apostrophes."
-            value={name}
-            onChange={(e) => {
-              const value = e.target.value;
+        {!otpMode ? (
+          <>
+            <div>
+              <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Full name
+              </label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                required
+                minLength={2}
+                maxLength={60}
+                pattern="[A-Za-z]+([ '-][A-Za-z]+)*"
+                title="Enter a name using letters, spaces, hyphens or apostrophes."
+                value={name}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^[A-Za-z\s'-]*$/.test(value)) {
+                    setName(value);
+                  }
+                }}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
+                placeholder="Enter your name"
+              />
+            </div>
 
-              if (/^[A-Za-z\s'-]*$/.test(value)) {
-                setName(value);
-              }
-            }}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
-            placeholder="Enter your name"
-          />
-        </div>
+            <div>
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                maxLength={254}
+                pattern="^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
+                placeholder="you@example.com"
+              />
+            </div>
 
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Email address
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={254}
-            pattern="^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$"
-            title="Please enter a valid email address, e.g. you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
-            placeholder="you@example.com"
-          />
-        </div>
+            <div>
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                maxLength={64}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
+                placeholder="At least 8 characters"
+              />
+            </div>
 
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={64}
-            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}"
-            title="Password must contain uppercase, lowercase, a number and a special character, with at least 8 characters."
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
-            placeholder="At least 8 characters"
-          />
-        </div>
+            <div>
+              <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                maxLength={64}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
+                placeholder="Re-enter your password"
+              />
+            </div>
 
-        <div>
-          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Confirm password
-          </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={64}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-blue-500 dark:text-slate-300"
-            placeholder="Re-enter your password"
-          />
-        </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? 'Creating account...' : 'Create Account'}
-        </button>
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-blue-600 hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-center text-sm text-gray-600 dark:text-slate-400">
+              We've sent a six-digit verification code to:
+              <strong className="mt-1 block text-gray-900 dark:text-white">
+                {email}
+              </strong>
+            </p>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:underline">
-            Sign in
-          </Link>
-        </p>
+            <div>
+              <label htmlFor="otp" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Verification code
+              </label>
+              <input
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                required
+                value={otp}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtp(value);
+                }}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl tracking-[0.5em] text-gray-900 outline-none focus:border-blue-500 dark:text-white"
+                placeholder="000000"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Verifying...' : 'Verify Email'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={loading}
+              className="w-full rounded-lg border border-blue-600 px-4 py-3 font-semibold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-700"
+            >
+              Resend OTP
+            </button>
+          </>
+        )}
       </form>
     </div>
   );
