@@ -42,6 +42,18 @@ const features = [
     available: true,
     accent: 'from-orange-500 to-pink-500',
   },
+
+  {
+    title: 'AI Follow-up Assistant',
+    description:
+      'Generate personalised, professional follow-up emails for job applications and interviews. Review, edit and send them with AI assistance.',
+    icon: '📧',
+    category: 'EMAIL PERSONALIZATION',
+    path: '/follow-up-assistant',
+    available: true,
+    accent: 'from-pink-500 to-rose-500',
+  },
+
 ];
 
 export default function AIAssistant() {

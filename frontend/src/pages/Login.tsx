@@ -30,6 +30,12 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.requiresVerification) {
+          throw new Error(
+            'Please verify your email address before logging in. Check your inbox for the OTP.'
+          );
+        }
+
         throw new Error(data.error || 'Login failed.');
       }
 

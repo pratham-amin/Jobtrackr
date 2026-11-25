@@ -11,6 +11,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import careerRoutes from './routes/careerRoutes.js';
 import interviewRoutes from './routes/interviewroutes.js';
 import mockInterviewRoutes from './routes/mockInterviewRoutes.js';
+import followUpRoutes from './routes/followUp.js';
 
 const app: Application = express();
 
@@ -34,6 +35,7 @@ app.use('/ai', aiRoutes);
 app.use('/career', careerRoutes);
 app.use('/interview', interviewRoutes);
 app.use('/mock-interview', mockInterviewRoutes);
+app.use('/follow-Up',followUpRoutes)
 
 const PORT = process.env.PORT || 5000;
 

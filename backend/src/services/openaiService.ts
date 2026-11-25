@@ -857,3 +857,97 @@ Use exactly this structure:
 
   return result;
 }
+
+export interface FollowUpEmailResult {
+  subject: string;
+  body: string;
+}
+
+export async function generateFollowUpEmail(
+  name: string,
+  jobTitle: string,
+  company: string,
+  recruiterName: string,
+  situation: string,
+  additionalContext: string,
+  tone: 'professional' | 'friendly' | 'confident'
+): Promise<FollowUpEmailResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  if (!name.trim() || !jobTitle.trim() || !company.trim() || !situation.trim()) {
+    throw new Error('Name, job title, company and situation are required.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+You are an expert professional career communication assistant.
+
+Generate a personalised follow-up email using the information below.
+
+CANDIDATE NAME: ${name}
+JOB TITLE: ${jobTitle}
+COMPANY: ${company}
+RECRUITER NAME: ${recruiterName || 'Hiring Team'}
+SITUATION: ${situation}
+ADDITIONAL CONTEXT: ${additionalContext || 'None provided'}
+TONE: ${tone}
+
+REQUIREMENTS:
+1. Write a professional and natural email.
+2. Create a relevant subject line.
+3. Address the recruiter appropriately.
+4. Keep the email concise, around 100-180 words.
+5. Adapt the message to the selected situation.
+6. Do not invent interviews, conversations, dates or promises.
+7. Avoid generic and repetitive phrases.
+8. Include an appropriate closing with the candidate's name.
+9. Return valid JSON only, without Markdown.
+
+Use exactly this structure:
+{
+  "subject": "Email subject",
+  "body": "Complete email body"
+}
+`;
+
+  const response = await ai.interactions.create({
+    model: 'gemini-3.5-flash-lite',
+    input: prompt,
+    store: false,
+  });
+
+  const output = response.output_text?.trim();
+
+  if (!output) {
+    throw new Error('Gemini did not generate a follow-up email.');
+  }
+
+  const cleanedOutput = output
+    .replace(/^```(?:json)?\\s*/i, '')
+    .replace(/\\s*```$/, '')
+    .trim();
+
+  let result: FollowUpEmailResult;
+
+  try {
+    result = JSON.parse(cleanedOutput) as FollowUpEmailResult;
+  } catch {
+    throw new Error('Gemini returned an invalid follow-up email.');
+  }
+
+  if (
+    typeof result.subject !== 'string' ||
+    typeof result.body !== 'string' ||
+    !result.subject.trim() ||
+    !result.body.trim()
+  ) {
+    throw new Error('Gemini returned an invalid email structure.');
+  }
+
+  return result;
+}

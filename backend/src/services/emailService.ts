@@ -37,3 +37,33 @@ export async function sendVerificationEmail(
     `,
   });
 }
+
+
+export async function sendFollowUpEmail(
+  recipientEmail: string,
+  subject: string,
+  message: string
+): Promise<void> {
+  const gmailUser = process.env.SMTP_USER;
+  const appPassword = process.env.SMTP_APP_PASSWORD;
+  const fromEmail = process.env.EMAIL_FROM;
+
+  if (!gmailUser || !appPassword || !fromEmail) {
+    throw new Error('Gmail SMTP is not configured.');
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailUser,
+      pass: appPassword.replace(/\s/g, ''),
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"JobTrackr" <${fromEmail}>`,
+    to: recipientEmail,
+    subject,
+    text: message,
+  });
+}
