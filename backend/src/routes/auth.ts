@@ -8,7 +8,8 @@ import {
   updateProfile,
   authMiddleware,
   verifyOtp,
-  resendOtp
+  resendOtp,
+  changePassword
 } from '../controllers/authController.js';
 
 const router: Router = express.Router();
@@ -20,5 +21,6 @@ router.get('/me', authMiddleware, getCurrentUser);
 router.put('/profile', authMiddleware, updateProfile);
 router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
+router.put('/change-password', authMiddleware, changePassword);
 
 export default router;

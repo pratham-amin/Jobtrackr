@@ -43,7 +43,6 @@ export default function Dashboard() {
 
   async function fetchApplications() {
   try {
-    setLoading(true);
     setError("");
 
     const response = await fetch(`${API_URL}/applications`, {
@@ -61,17 +60,17 @@ export default function Dashboard() {
 
     const data: Job[] = await response.json();
 
-
-
-setJobs(data);
+    setJobs(data);
   } catch (err) {
-    console.error("Dashboard error:", err);
+  console.error("Dashboard error:", err);
+
+  if (loading) {
     setError("Unable to load your applications. Please try again.");
-  } finally {
+  }
+} finally {
     setLoading(false);
   }
 }
-
 
 async function fetchDueFollowUps() {
   try {
@@ -288,6 +287,11 @@ async function confirmDelete() {
   return () => clearTimeout(timer);
 }, [successMessage]);
 
+  useEffect(() => {
+    fetchApplications();
+    fetchDueFollowUps();
+  }, []);
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
@@ -486,18 +490,9 @@ async function confirmDelete() {
               )}
             </section>
 
-        {/* Loading */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+        
 
-              <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Loading your applications...
-              </p>
-            </div>
-          )}
-
-          {/* Error */}
+          
           {/* Error */}
           {!loading && error && (
             <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-950/30">
@@ -616,8 +611,8 @@ async function confirmDelete() {
 
       
             {/* Follow-up Reminders */}
-          {!loading && !followUpsLoading && (
-            <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          {!loading &&  (
+            <section id="follow-up-reminders" className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white">

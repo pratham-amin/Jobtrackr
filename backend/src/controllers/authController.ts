@@ -571,6 +571,7 @@ export async function updateProfile(
     }
 
     const {
+      name,
       phone,
       skills,
       experience,
@@ -578,7 +579,23 @@ export async function updateProfile(
       portfolio_url,
     } = req.body;
 
+    if (name !== undefined) {
+      const trimmedName = name.trim();
+
+      if (
+        trimmedName.length < 2 ||
+        trimmedName.length > 60 ||
+        !/^[A-Za-z]+([ '-][A-Za-z]+)*$/.test(trimmedName)
+      ) {
+        res.status(400).json({
+          error: 'Name must contain 2–60 characters using letters, spaces, hyphens or apostrophes.',
+        });
+        return;
+      }
+    }
+
     if (
+      (name !== undefined && typeof name !== 'string') ||
       (phone !== undefined && typeof phone !== 'string') ||
       (skills !== undefined && typeof skills !== 'string') ||
       (experience !== undefined && typeof experience !== 'string') ||
@@ -591,15 +608,17 @@ export async function updateProfile(
 
     const result = await pool.query(
       `UPDATE users
-       SET phone = $1,
-           skills = $2,
-           experience = $3,
-           linkedin_url = $4,
-           portfolio_url = $5
-       WHERE id = $6
+        SET name = COALESCE($1, name),
+            phone = $2,
+            skills = $3,
+            experience = $4,
+            linkedin_url = $5,
+            portfolio_url = $6
+        WHERE id = $7
        RETURNING id, name, email, created_at,
                  phone, skills, experience, linkedin_url, portfolio_url`,
       [
+        name?.trim() || undefined ,
         phone?.trim() || null,
         skills?.trim() || null,
         experience?.trim() || null,
@@ -621,5 +640,102 @@ export async function updateProfile(
   } catch (error) {
     console.error('Profile update failed:', error);
     res.status(500).json({ error: 'Unable to update profile.' });
+  }
+}
+
+export async function changePassword(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const userId =
+      typeof req.user === 'object' && req.user !== null
+        ? req.user.id
+        : undefined;
+
+    if (!userId) {
+      res.status(401).json({
+        error: 'Authentication required.',
+      });
+      return;
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (
+      typeof currentPassword !== 'string' ||
+      typeof newPassword !== 'string' ||
+      typeof confirmPassword !== 'string'
+    ) {
+      res.status(400).json({
+        error: 'Please provide all password fields.',
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({
+        error: 'New passwords do not match.',
+      });
+      return;
+    }
+
+    const passwordPattern =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S{8,64}$/;
+
+    if (!passwordPattern.test(newPassword)) {
+      res.status(400).json({
+        error: 'Password must be 8–64 characters and include uppercase, lowercase, a number and a special character.',
+      });
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      res.status(400).json({
+        error: 'New password must be different from your current password.',
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({
+        error: 'User not found.',
+      });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(
+      currentPassword,
+      result.rows[0].password_hash
+    );
+
+    if (!isMatch) {
+      res.status(400).json({
+        error: 'Current password is incorrect.',
+      });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [hashedPassword, userId]
+    );
+
+    res.json({
+      message: 'Password changed successfully.',
+    });
+  } catch (error) {
+    console.error('Password change failed:', error);
+
+    res.status(500).json({
+      error: 'Unable to change password.',
+    });
   }
 }
